@@ -118,16 +118,28 @@ const generateEmojiBlob = (emoji) => {
 };
 
 /* 
-   在这里修改默认图片！
-   如果你在 GitHub 上有了 GIF，把 generateEmojiBlob(...) 换成图片的相对路径
-   例如: idle: "scripts/extensions/st-desktop-pet/assets/idle.gif",
+   注意：
+   extensionName 必须和你的 GitHub 仓库名完全一致！
+   根据截图，你的仓库名是 "sansan"
 */
+const extensionName = "sansan"; 
+const basePath = `scripts/extensions/${extensionName}/assets/`;
+
 const DefaultAssets = {
-    idle: "scripts/extensions/sansan/assets/idle.gif",
-    walk: "scripts/extensions/sansan/assets/walk.gif",
-    interact: "scripts/extensions/sansan/assets/happy.gif",
-    drag: "scripts/extensions/sansan/assets/drag.gif",
-    sleep: generateEmojiBlob('💤')
+    // 待机状态：我暂时用 happy.gif，如果你有专门的站立图可以换
+    idle:     `${basePath}happy.gif`, 
+    
+    // 行走状态：对应你文件夹里的 walk.gif
+    walk:     `${basePath}walk.gif`,  
+    
+    // 互动/点击：对应你文件夹里的 happy.gif
+    interact: `${basePath}happy.gif`, 
+    
+    // 被拖拽：对应你文件夹里的 drag.gif
+    drag:     `${basePath}drag.gif`,  
+    
+    // 睡觉：你文件夹里暂时没有 sleep.gif，我先用 happy.gif 顶替，或者你可以上传一个 sleep.gif
+    sleep:    `${basePath}happy.gif`  
 };
 
 const PetExtension = {
