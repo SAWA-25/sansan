@@ -30,6 +30,172 @@
     transform: scaleX(-1);
 }
 
+/* 移动端适配样式 */
+@media (max-width: 768px) {
+    #pet-entity {
+        cursor: pointer;
+        touch-action: none;
+    }
+    
+    .pet-context-menu {
+        min-width: 180px;
+        font-size: 14px;
+    }
+    
+    .pet-modal-overlay .pet-settings-panel,
+    .pet-modal-overlay .pet-chat-panel {
+        width: 95vw;
+        max-width: 95vw;
+        height: 90vh;
+        max-height: 90vh;
+    }
+    
+    .pet-settings-scroll-area {
+        max-height: 60vh;
+    }
+    
+    .pet-upload-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .pet-chat-messages {
+        height: 50vh;
+        max-height: 50vh;
+    }
+    
+    .pet-chat-input-area textarea {
+        font-size: 16px; /* 防止iOS缩放 */
+    }
+    
+    .pet-chat-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .pet-chat-buttons button {
+        flex: 1;
+        min-width: 80px;
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+}
+
+/* 移动端控制按钮 */
+.pet-mobile-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+}
+
+.pet-mobile-btn {
+    width: 45px;
+    height: 45px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.pet-mobile-btn:active {
+    transform: scale(0.9);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 触摸优化 */
+#pet-entity {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 防止文本选择 */
+.pet-context-menu {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* 移动端气泡调整 */
+@media (max-width: 768px) {
+    #pet-bubble-container {
+        max-width: 200px;
+    }
+    
+    .pet-speech-bubble {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+}
+
+/* 设置面板移动端优化 */
+@media (max-width: 768px) {
+    .pet-settings-panel {
+        margin: 10px;
+    }
+    
+    .pet-form-group label {
+        font-size: 14px;
+    }
+    
+    .pet-input {
+        font-size: 16px; /* 防止iOS缩放 */
+    }
+    
+    .pet-section-title {
+        font-size: 16px;
+    }
+    
+    .pet-settings-buttons {
+        flex-direction: column;
+    }
+    
+    .pet-settings-buttons button {
+        margin: 5px 0;
+    }
+}
+
+/* 横屏优化 */
+@media (max-height: 500px) and (orientation: landscape) {
+    .pet-mobile-controls {
+        bottom: 10px;
+        padding: 8px;
+    }
+    
+    .pet-mobile-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .pet-modal-overlay .pet-settings-panel,
+    .pet-modal-overlay .pet-chat-panel {
+        height: 85vh;
+        max-height: 85vh;
+    }
+}
+
 /* 对话气泡 */
 .pet-speech-bubble {
     position: absolute;
