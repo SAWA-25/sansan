@@ -2,6 +2,20 @@
 import { extension_settings } from "../../../extensions.js";
 
 // ==========================================
+// 0. 引入 html2canvas (用于屏幕截图)
+// ==========================================
+const loadScript = (src) => {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) return resolve();
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+};
+
+// ==========================================
 // 1. HTML 结构模板 (升级版)
 // ==========================================
 const petHtmlTemplate = `
@@ -17,22 +31,33 @@ const petHtmlTemplate = `
     <!-- 食物容器 (动态生成) -->
     <div id="pet-food-container"></div>
 
+    <!-- 聊天输入框 (平时隐藏) -->
+    <div id="pet-chat-box" class="pet-panel-glass">
+        <input type="text" id="pet-chat-input" placeholder="和它说句话..." autocomplete="off">
+        <button id="pet-chat-send">发送</button>
+        <button id="pet-chat-close">×</button>
+    </div>
+
+
     <!-- 右键菜单 -->
     <div class="pet-context-menu" id="pet-context-menu">
         <div class="pet-mini-stats">
-            <div class="pet-stat-row"><span>饱食度</span><span id="val-hunger">80%</span></div>
+            <div class="pet-stat-row"><span>饱食</span><span id="val-hunger">80%</span></div>
             <div class="pet-stat-bar-bg"><div class="pet-stat-bar-fill" id="bar-hunger" style="width: 80%"></div></div>
             <div style="height:5px"></div>
-            <div class="pet-stat-row"><span>心情值</span><span id="val-happiness">60%</span></div>
+            <div class="pet-stat-row"><span>心情</span><span id="val-happiness">60%</span></div>
             <div class="pet-stat-bar-bg"><div class="pet-stat-bar-fill" id="bar-happiness" style="width: 60%; background:#c8e6f8"></div></div>
         </div>
         <div class="pet-menu-item" id="act-feed">🍖 投喂食物</div>
+        <div class="pet-menu-item" id="act-vision">👀 看看这是哪 (识图)</div>
+        <div class="pet-menu-item" id="act-chat">💬 聊天</div>
         <div class="pet-menu-item" id="act-sleep">💤 睡觉/叫醒</div>
         <div class="pet-menu-item" id="act-interact">💕 抚摸</div>
         <div class="pet-menu-separator"></div>
-        <div class="pet-menu-item" id="act-settings">⚙️ 设置</div>
+        <div class="pet-menu-item" id="act-settings">⚙️ 设置 / API</div>
         <div class="pet-menu-item" id="act-reset">📍 重置位置</div>
     </div>
+
 
     <!-- 设置面板 -->
     <div class="pet-modal-overlay" id="pet-settings-modal">
@@ -55,6 +80,29 @@ const petHtmlTemplate = `
                     <input type="range" id="pet-set-fps" min="50" max="500" value="150" step="10" style="width:100%">
                     <div style="font-size:12px;color:#999">数值越小动作越快</div>
                 </div>
+
+                
+                <!-- API 设置 -->
+                <div class="pet-section-title">AI 连接设置 (LLM)</div>
+                <div class="pet-form-group">
+                    <label>API Endpoint (反代地址)</label>
+                    <input type="text" id="pet-ai-url" placeholder="https://api.openai.com/v1" class="pet-input">
+                    <div class="pet-note">例如: https://api.openai.com/v1 (不需要加 /chat/completions)</div>
+                </div>
+                <div class="pet-form-group">
+                    <label>API Key (密匙)</label>
+                    <input type="password" id="pet-ai-key" placeholder="sk-..." class="pet-input">
+                </div>
+                <div class="pet-form-group">
+                    <label>模型名称 (需支持视觉)</label>
+                    <input type="text" id="pet-ai-model" value="gpt-4o-mini" class="pet-input">
+                    <div class="pet-note">推荐: gpt-4o-mini, gpt-4o, claude-3-5-sonnet</div>
+                </div>
+                <div class="pet-form-group">
+                    <label>人设提示词 (System Prompt)</label>
+                    <textarea id="pet-ai-prompt" class="pet-input" rows="3" placeholder="你是一只可爱的桌面宠物..."></textarea>
+                </div>
+
 
                 <div class="pet-section-title">资源自定义 (支持多图逐帧)</div>
                 <div style="font-size:12px; color:#e74c3c; margin-bottom:10px;">
@@ -148,8 +196,16 @@ const PetExtension = {
         frameSpeed: 150, // 动画每帧间隔(ms)
         stats: { hunger: 80, happiness: 80, energy: 90 },
         // images 结构改变：现在除了 food 外，其他都是数组 []
-        images: { ...DefaultAssets } 
+        images: { ...DefaultAssets },
+        // AI 配置
+        ai: {
+            url: "https://api.openai.com/v1",
+            key: "",
+            model: "gpt-4o-mini",
+            prompt: "你是一只生活在电脑屏幕上的电子宠物猫，名字叫三三。说话要简短、可爱、带一点傲娇。每句话不要超过20个字。如果看到屏幕上有代码，吐槽一下代码写得乱；如果看到视频，就说想一起看。"
+        }
     },
+
     
     state: {
         isDragging: false,
@@ -386,6 +442,118 @@ const PetExtension = {
         this.elements.pet.style.transform = "scaleX(1)"; // 恢复朝向
     },
 
+    
+    // --- AI 与 识图核心逻辑 ---
+
+    // 1. 识图功能
+    async visionCheck() {
+        if (!window.html2canvas) return this.say("组件加载中，请稍后再试...");
+        if (!this.store.ai.key) return this.say("请先在设置里填写 API Key！");
+
+        this.hideMenu();
+        this.state.isThinking = true;
+        this.say("正在看..."); 
+        
+        try {
+            // 暂时隐藏宠物，避免自己被截图进去
+            this.elements.pet.style.opacity = '0'; 
+            document.getElementById('pet-bubble-container').style.opacity = '0';
+
+            // 截图
+            const canvas = await html2canvas(document.body, { 
+                useCORS: true, // 尝试允许跨域图片
+                logging: false,
+                scale: 0.5 // 降低分辨率以节省 Token 和带宽
+            });
+            
+            // 恢复显示
+            this.elements.pet.style.opacity = '1';
+            document.getElementById('pet-bubble-container').style.opacity = '1';
+
+            const base64Img = canvas.toDataURL('image/jpeg', 0.7);
+            
+            // 调用 LLM
+            await this.callLLM("我现在在屏幕上看到了这个画面，请根据我的设定（电子宠物），简短评价一下这个画面。如果在看视频或文章，概括一下内容。", base64Img);
+
+        } catch(err) {
+            console.error(err);
+            this.elements.pet.style.opacity = '1';
+            document.getElementById('pet-bubble-container').style.opacity = '1';
+            this.say("看不清楚... (截图失败)");
+        } finally {
+            this.state.isThinking = false;
+        }
+    },
+
+    // 2. 聊天功能
+    async sendChat() {
+        const text = this.elements.chatInput.value.trim();
+        if (!text) return;
+        if (!this.store.ai.key) return this.say("请先填写 API Key");
+
+        this.elements.chatInput.value = '';
+        this.elements.chatBox.style.display = 'none'; // 发送后关闭框
+        
+        this.say("Thinking...");
+        this.state.isThinking = true;
+        
+        await this.callLLM(text, null); // 纯文本对话
+        this.state.isThinking = false;
+    },
+
+    // 3. 通用 LLM 调用器
+    async callLLM(userText, imageBase64 = null) {
+        const api = this.store.ai;
+        let url = api.url;
+        if (!url.endsWith('/v1')) url = url.replace(/\/+$/, '') + '/v1'; // 简单修正路径
+        url += '/chat/completions';
+
+        const messages = [
+            { role: "system", content: api.prompt }
+        ];
+
+        if (imageBase64) {
+            // 视觉请求格式
+            messages.push({
+                role: "user",
+                content: [
+                    { type: "text", text: userText },
+                    { type: "image_url", image_url: { url: imageBase64 } }
+                ]
+            });
+        } else {
+            // 纯文本请求
+            messages.push({ role: "user", content: userText });
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${api.key}`
+                },
+                body: JSON.stringify({
+                    model: api.model,
+                    messages: messages,
+                    max_tokens: 100
+                })
+            });
+
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            
+            const data = await response.json();
+            const reply = data.choices[0].message.content;
+            
+            this.say(reply, 6000); // AI 回复显示久一点
+            this.setAction('interact'); // 开心跳动
+
+        } catch (e) {
+            console.error("LLM Call Failed", e);
+            this.say("大脑连接断开了... (API请求失败)");
+        }
+    },
+
     // --- 互动系统 (喂食升级) ---
 
     spawnFood() {
@@ -518,6 +686,19 @@ const PetExtension = {
         document.getElementById('act-feed').onclick = () => this.spawnFood();
         document.getElementById('act-sleep').onclick = () => this.toggleSleep();
         document.getElementById('act-interact').onclick = () => this.interact();
+        document.getElementById('act-vision').onclick = () => this.visionCheck(); // 识图
+        document.getElementById('act-reset').onclick = () => {
+            this.movePetTo(window.innerWidth/2, window.innerHeight/2);
+            this.hideMenu();
+        document.getElementById('act-chat').onclick = () => {
+            this.hideMenu();
+            this.elements.chatBox.style.display = 'flex';
+            this.elements.chatInput.focus();
+        };
+        document.getElementById('pet-chat-close').onclick = () => this.elements.chatBox.style.display = 'none';
+        document.getElementById('pet-chat-send').onclick = () => this.sendChat();
+        this.elements.chatInput.onkeypress = (e) => { if(e.key === 'Enter') this.sendChat(); };
+
         document.getElementById('act-reset').onclick = () => {
             this.movePetTo(window.innerWidth/2, window.innerHeight/2);
             this.hideMenu();
@@ -550,6 +731,11 @@ const PetExtension = {
         document.getElementById('pet-set-size').value = this.store.size;
         document.getElementById('size-display').textContent = this.store.size + 'px';
         document.getElementById('pet-set-fps').value = this.store.frameSpeed;
+        // AI Settings
+        document.getElementById('pet-ai-url').value = s.ai.url;
+        document.getElementById('pet-ai-key').value = s.ai.key;
+        document.getElementById('pet-ai-model').value = s.ai.model;
+        document.getElementById('pet-ai-prompt').value = s.ai.prompt;
         document.getElementById('fps-display').textContent = this.store.frameSpeed + 'ms';
 
         // 预览图逻辑：如果是数组，取第一张；如果是字符串，直接用
@@ -580,6 +766,10 @@ const PetExtension = {
         this.store.petName = document.getElementById('pet-set-name').value;
         this.store.size = parseInt(document.getElementById('pet-set-size').value);
         this.store.frameSpeed = parseInt(document.getElementById('pet-set-fps').value);
+        this.ai.url = document.getElementById('pet-ai-url').value.trim();
+        this.ai.key = document.getElementById('pet-ai-key').value.trim();
+        this.ai.model = document.getElementById('pet-ai-model').value.trim();
+        this.ai.prompt = document.getElementById('pet-ai-prompt').value.trim();
         this.saveData();
         this.updateAppearance();
         this.elements.modal.classList.remove('show');
