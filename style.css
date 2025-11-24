@@ -1,0 +1,173 @@
+/* 容器层，确保穿透点击 */
+#pet-overlay-root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20000; /* 确保在酒馆最上层 */
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* 宠物本体 */
+#pet-entity {
+    position: absolute;
+    width: 150px;
+    height: auto;
+    z-index: 20001;
+    cursor: grab;
+    pointer-events: auto; /* 恢复点击 */
+    transition: transform 0.1s linear;
+    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));
+}
+
+#pet-entity:active {
+    cursor: grabbing;
+}
+
+.pet-flipped {
+    transform: scaleX(-1);
+}
+
+/* 对话气泡 */
+.pet-speech-bubble {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    color: #333;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: 1px solid #eee;
+    z-index: 20002;
+}
+
+#pet-bubble-container {
+    position: absolute;
+    z-index: 20002;
+    pointer-events: none;
+    transition: top 0.1s linear, left 0.1s linear;
+}
+
+.pet-speech-bubble.show {
+    opacity: 1;
+}
+
+/* 右键菜单 */
+.pet-context-menu {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    padding: 5px 0;
+    min-width: 120px;
+    display: none;
+    flex-direction: column;
+    z-index: 20003;
+    pointer-events: auto;
+    backdrop-filter: blur(5px);
+    color: black;
+}
+
+.pet-context-menu.show {
+    display: flex;
+}
+
+.pet-menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #444;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pet-menu-item:hover {
+    background-color: #f0f0f0;
+    color: #ff8fab;
+}
+
+.pet-menu-separator {
+    height: 1px;
+    background-color: #eee;
+    margin: 4px 0;
+}
+
+/* 设置弹窗 */
+.pet-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 20004;
+    pointer-events: auto;
+}
+
+.pet-modal-overlay.show {
+    display: flex;
+}
+
+.pet-settings-panel {
+    background: white;
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    border-radius: 20px;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    color: #333;
+}
+
+.pet-form-group { margin-bottom: 15px; }
+.pet-form-group label { display: block; margin-bottom: 5px; color: #888; font-size: 12px; }
+
+.pet-image-uploader {
+    border: 2px dashed #ddd;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.3s;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pet-image-uploader:hover { border-color: #ff8fab; }
+.pet-image-uploader img { max-height: 50px; max-width: 100%; }
+
+.pet-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 50px;
+    background: #f8c8dc;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.pet-btn:hover { background: #f5b8d0; }
+.pet-btn-cancel { background: #eee; color: #666; }
+
+/* 统计条 */
+.pet-mini-stats { padding: 10px 15px; border-bottom: 1px solid #eee; }
+.pet-stat-row { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 4px; }
+.pet-stat-bar-bg { width: 100%; height: 4px; background: #eee; border-radius: 2px; }
+.pet-stat-bar-fill { height: 100%; border-radius: 2px; background: #f8c8dc; transition: width 0.5s; }
