@@ -1,4 +1,6 @@
-// index.js - Sansan Desktop Pet V2 (Frame-by-Frame & Custom Food)
+[file name]: index.js
+[file content begin]
+// index.js - Sansan Desktop Pet V2 (Frame-by-Frame & Custom Food) with Vision
 import { extension_settings } from "../../../extensions.js";
 
 // ==========================================
@@ -29,9 +31,30 @@ const petHtmlTemplate = `
         <div class="pet-menu-item" id="act-feed">🍖 投喂食物</div>
         <div class="pet-menu-item" id="act-sleep">💤 睡觉/叫醒</div>
         <div class="pet-menu-item" id="act-interact">💕 抚摸</div>
+        <div class="pet-menu-item" id="act-chat">💬 对话</div>
+        <div class="pet-menu-item" id="act-look">👀 看看周围</div>
         <div class="pet-menu-separator"></div>
         <div class="pet-menu-item" id="act-settings">⚙️ 设置</div>
         <div class="pet-menu-item" id="act-reset">📍 重置位置</div>
+    </div>
+
+    <!-- 聊天对话框 -->
+    <div class="pet-modal-overlay" id="pet-chat-modal">
+        <div class="pet-chat-panel">
+            <h3 class="pet-chat-header">与<span id="chat-pet-name">三三</span>对话</h3>
+            <div class="pet-chat-messages" id="chat-messages">
+                <div class="pet-chat-message pet-chat-bot">
+                    <span class="pet-chat-sender">三三:</span>
+                    <span class="pet-chat-text">你好呀！我可以和你聊天，也可以看看周围的环境~</span>
+                </div>
+            </div>
+            <div class="pet-chat-input-area">
+                <textarea id="chat-input" placeholder="输入你想说的话..." rows="3"></textarea>
+                <button id="chat-send" class="pet-btn primary">发送</button>
+                <button id="chat-clear" class="pet-btn cancel">清空</button>
+                <button id="chat-close" class="pet-btn cancel">关闭</button>
+            </div>
+        </div>
     </div>
 
     <!-- 设置面板 -->
@@ -40,6 +63,50 @@ const petHtmlTemplate = `
             <h3 class="pet-settings-header">宠物设置 V2.0</h3>
             
             <div class="pet-settings-scroll-area">
+                <!-- API 设置区域 -->
+                <div class="pet-section-title">AI 视觉与对话设置</div>
+                <div style="font-size:12px; color:#e74c3c; margin-bottom:10px;">
+                    ⚠️ 需要配置 API 密钥才能使用对话和视觉功能
+                </div>
+
+                <div class="pet-form-group">
+                    <label>API 反向代理地址</label>
+                    <input type="text" id="pet-set-api-base" class="pet-input" placeholder="https://api.openai.com/v1">
+                    <div style="font-size:12px;color:#999">例如: https://your-proxy.com/v1</div>
+                </div>
+
+                <div class="pet-form-group">
+                    <label>API 密钥</label>
+                    <input type="password" id="pet-set-api-key" class="pet-input" placeholder="sk-...">
+                    <div style="font-size:12px;color:#999">你的 OpenAI API 密钥</div>
+                </div>
+
+                <div class="pet-form-group">
+                    <label>视觉模型</label>
+                    <select id="pet-set-vision-model" class="pet-input">
+                        <option value="gpt-4-vision-preview">gpt-4-vision-preview</option>
+                        <option value="gpt-4o">gpt-4o</option>
+                    </select>
+                </div>
+
+                <div class="pet-form-group">
+                    <label>对话模型</label>
+                    <select id="pet-set-chat-model" class="pet-input">
+                        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                        <option value="gpt-4">gpt-4</option>
+                        <option value="gpt-4-turbo">gpt-4-turbo</option>
+                    </select>
+                </div>
+
+                <div class="pet-form-group">
+                    <label>宠物性格</label>
+                    <textarea id="pet-set-personality" class="pet-input" rows="3" placeholder="描述宠物的性格特点..."></textarea>
+                    <div style="font-size:12px;color:#999">这会影响AI对话的风格</div>
+                </div>
+
+                <!-- 原有的设置内容 -->
+                <div class="pet-section-title">基本设置</div>
+
                 <div class="pet-form-group">
                     <label>宠物名字</label>
                     <input type="text" id="pet-set-name" class="pet-input">
@@ -148,7 +215,15 @@ const PetExtension = {
         frameSpeed: 150, // 动画每帧间隔(ms)
         stats: { hunger: 80, happiness: 80, energy: 90 },
         // images 结构改变：现在除了 food 外，其他都是数组 []
-        images: { ...DefaultAssets } 
+        images: { ...DefaultAssets },
+        // AI 设置
+        aiSettings: {
+            apiBase: '',
+            apiKey: '',
+            visionModel: 'gpt-4-vision-preview',
+            chatModel: 'gpt-3.5-turbo',
+            personality: '你是一只可爱的桌面宠物，名字叫三三。你喜欢和人互动，说话风格可爱活泼，会使用表情符号。'
+        }
     },
     
     state: {
@@ -156,6 +231,7 @@ const PetExtension = {
         isSleeping: false,
         isWalking: false,
         isEating: false, // 新增：正在吃东西状态
+        isProcessingAI: false, // AI处理中
         
         currentAction: 'idle',
         
@@ -189,6 +265,7 @@ const PetExtension = {
             bubble: document.getElementById('pet-bubble'),
             menu: document.getElementById('pet-context-menu'),
             modal: document.getElementById('pet-settings-modal'),
+            chatModal: document.getElementById('pet-chat-modal'),
             foodContainer: document.getElementById('pet-food-container')
         };
 
@@ -232,6 +309,11 @@ const PetExtension = {
                         this.store.images[key] = [this.store.images[key]];
                     }
                 });
+
+                // 加载 AI 设置
+                if (data.aiSettings) {
+                    this.store.aiSettings = { ...this.store.aiSettings, ...data.aiSettings };
+                }
 
             } catch(e) { console.error("Pet data load failed", e); }
         }
@@ -386,6 +468,230 @@ const PetExtension = {
         this.elements.pet.style.transform = "scaleX(1)"; // 恢复朝向
     },
 
+    // --- AI 视觉与对话功能 ---
+
+    async captureScreen() {
+        try {
+            // 使用 html2canvas 捕获屏幕
+            if (typeof html2canvas === 'undefined') {
+                // 动态加载 html2canvas
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                document.head.appendChild(script);
+                
+                return new Promise((resolve, reject) => {
+                    script.onload = () => resolve(this.captureWithHtml2Canvas());
+                    script.onerror = reject;
+                });
+            } else {
+                return await this.captureWithHtml2Canvas();
+            }
+        } catch (error) {
+            console.error('截图失败:', error);
+            throw new Error('截图功能不可用');
+        }
+    },
+
+    async captureWithHtml2Canvas() {
+        return new Promise((resolve, reject) => {
+            html2canvas(document.body, {
+                useCORS: true,
+                allowTaint: true,
+                scale: 0.5, // 降低分辨率以减少数据量
+                logging: false
+            }).then(canvas => {
+                // 将 canvas 转换为 base64
+                const base64Image = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(base64Image);
+            }).catch(reject);
+        });
+    },
+
+    async callVisionAPI(imageBase64) {
+        if (!this.store.aiSettings.apiKey) {
+            throw new Error('请先在设置中配置API密钥');
+        }
+
+        const apiUrl = this.store.aiSettings.apiBase ? 
+            `${this.store.aiSettings.apiBase}/chat/completions` : 
+            'https://api.openai.com/v1/chat/completions';
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.store.aiSettings.apiKey}`
+            },
+            body: JSON.stringify({
+                model: this.store.aiSettings.visionModel,
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            {
+                                type: "text",
+                                text: `请描述这张截图中的内容。我是一只桌面宠物，当前在屏幕上的位置大约是 (${Math.round(this.state.posX)}, ${Math.round(this.state.posY)})。请用可爱的宠物语气描述你看到了什么。`
+                            },
+                            {
+                                type: "image_url",
+                                image_url: {
+                                    url: imageBase64
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 500
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API请求失败: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    },
+
+    async callChatAPI(messages) {
+        if (!this.store.aiSettings.apiKey) {
+            throw new Error('请先在设置中配置API密钥');
+        }
+
+        const apiUrl = this.store.aiSettings.apiBase ? 
+            `${this.store.aiSettings.apiBase}/chat/completions` : 
+            'https://api.openai.com/v1/chat/completions';
+
+        // 添加系统提示词
+        const systemMessage = {
+            role: "system",
+            content: this.store.aiSettings.personality
+        };
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.store.aiSettings.apiKey}`
+            },
+            body: JSON.stringify({
+                model: this.store.aiSettings.chatModel,
+                messages: [systemMessage, ...messages],
+                max_tokens: 500
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API请求失败: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    },
+
+    async lookAround() {
+        if (this.state.isProcessingAI) {
+            this.say("我正在忙着呢，稍等一下~");
+            return;
+        }
+
+        this.state.isProcessingAI = true;
+        this.setAction('interact');
+        this.say("让我看看周围...");
+
+        try {
+            const screenshot = await this.captureScreen();
+            const description = await this.callVisionAPI(screenshot);
+            
+            this.say(description);
+            this.addChatMessage('bot', description);
+            
+        } catch (error) {
+            console.error('视觉识别失败:', error);
+            this.say("哎呀，看不清楚周围呢~");
+        } finally {
+            this.state.isProcessingAI = false;
+            setTimeout(() => {
+                if(this.state.currentAction === 'interact') this.setAction('idle');
+            }, 2000);
+        }
+    },
+
+    async chatWithPet(message) {
+        if (this.state.isProcessingAI) {
+            this.say("我正在忙着呢，稍等一下~");
+            return;
+        }
+
+        this.state.isProcessingAI = true;
+        this.setAction('interact');
+
+        try {
+            // 获取聊天记录
+            const messages = this.getChatHistory();
+            messages.push({
+                role: "user",
+                content: message
+            });
+
+            const response = await this.callChatAPI(messages);
+            
+            this.say(response);
+            this.addChatMessage('bot', response);
+            
+        } catch (error) {
+            console.error('对话失败:', error);
+            this.say("我现在有点困，不想说话~");
+        } finally {
+            this.state.isProcessingAI = false;
+            setTimeout(() => {
+                if(this.state.currentAction === 'interact') this.setAction('idle');
+            }, 2000);
+        }
+    },
+
+    getChatHistory() {
+        // 简单的聊天记录管理，只保留最近5条
+        const messages = JSON.parse(localStorage.getItem('st_desktop_pet_chat_history') || '[]');
+        return messages.slice(-5);
+    },
+
+    saveChatMessage(role, content) {
+        const messages = this.getChatHistory();
+        messages.push({ role: role === 'user' ? 'user' : 'assistant', content });
+        localStorage.setItem('st_desktop_pet_chat_history', JSON.stringify(messages.slice(-10))); // 最多保存10条
+    },
+
+    addChatMessage(type, text) {
+        const messagesContainer = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `pet-chat-message pet-chat-${type}`;
+        
+        const sender = type === 'user' ? '你:' : `${this.store.petName}:`;
+        messageDiv.innerHTML = `
+            <span class="pet-chat-sender">${sender}</span>
+            <span class="pet-chat-text">${text}</span>
+        `;
+        
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // 保存到历史记录
+        this.saveChatMessage(type, text);
+    },
+
+    openChat() {
+        this.hideMenu();
+        document.getElementById('chat-pet-name').textContent = this.store.petName;
+        document.getElementById('chat-input').value = '';
+        document.getElementById('chat-input').focus();
+        this.elements.chatModal.classList.add('show');
+    },
+
+    closeChat() {
+        this.elements.chatModal.classList.remove('show');
+    },
+
     // --- 互动系统 (喂食升级) ---
 
     spawnFood() {
@@ -518,6 +824,8 @@ const PetExtension = {
         document.getElementById('act-feed').onclick = () => this.spawnFood();
         document.getElementById('act-sleep').onclick = () => this.toggleSleep();
         document.getElementById('act-interact').onclick = () => this.interact();
+        document.getElementById('act-chat').onclick = () => this.openChat();
+        document.getElementById('act-look').onclick = () => this.lookAround();
         document.getElementById('act-reset').onclick = () => {
             this.movePetTo(window.innerWidth/2, window.innerHeight/2);
             this.hideMenu();
@@ -527,6 +835,35 @@ const PetExtension = {
         document.getElementById('act-settings').onclick = this.openSettings.bind(this);
         document.getElementById('btn-close-settings').onclick = () => this.elements.modal.classList.remove('show');
         document.getElementById('btn-save-settings').onclick = this.applySettings.bind(this);
+
+        // 聊天面板逻辑
+        document.getElementById('chat-send').onclick = () => {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (message) {
+                this.addChatMessage('user', message);
+                input.value = '';
+                this.chatWithPet(message);
+            }
+        };
+
+        document.getElementById('chat-clear').onclick = () => {
+            document.getElementById('chat-messages').innerHTML = `
+                <div class="pet-chat-message pet-chat-bot">
+                    <span class="pet-chat-sender">${this.store.petName}:</span>
+                    <span class="pet-chat-text">你好呀！我可以和你聊天，也可以看看周围的环境~</span>
+                </div>
+            `;
+            localStorage.removeItem('st_desktop_pet_chat_history');
+        };
+
+        document.getElementById('chat-close').onclick = () => this.closeChat();
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chat-send').click();
+            }
+        });
 
         document.getElementById('pet-set-size').addEventListener('input', (e) => {
             document.getElementById('size-display').textContent = e.target.value + 'px';
@@ -551,6 +888,13 @@ const PetExtension = {
         document.getElementById('size-display').textContent = this.store.size + 'px';
         document.getElementById('pet-set-fps').value = this.store.frameSpeed;
         document.getElementById('fps-display').textContent = this.store.frameSpeed + 'ms';
+
+        // AI 设置
+        document.getElementById('pet-set-api-base').value = this.store.aiSettings.apiBase;
+        document.getElementById('pet-set-api-key').value = this.store.aiSettings.apiKey;
+        document.getElementById('pet-set-vision-model').value = this.store.aiSettings.visionModel;
+        document.getElementById('pet-set-chat-model').value = this.store.aiSettings.chatModel;
+        document.getElementById('pet-set-personality').value = this.store.aiSettings.personality;
 
         // 预览图逻辑：如果是数组，取第一张；如果是字符串，直接用
         const refreshPreview = (key) => {
@@ -580,6 +924,14 @@ const PetExtension = {
         this.store.petName = document.getElementById('pet-set-name').value;
         this.store.size = parseInt(document.getElementById('pet-set-size').value);
         this.store.frameSpeed = parseInt(document.getElementById('pet-set-fps').value);
+        
+        // 保存 AI 设置
+        this.store.aiSettings.apiBase = document.getElementById('pet-set-api-base').value;
+        this.store.aiSettings.apiKey = document.getElementById('pet-set-api-key').value;
+        this.store.aiSettings.visionModel = document.getElementById('pet-set-vision-model').value;
+        this.store.aiSettings.chatModel = document.getElementById('pet-set-chat-model').value;
+        this.store.aiSettings.personality = document.getElementById('pet-set-personality').value;
+
         this.saveData();
         this.updateAppearance();
         this.elements.modal.classList.remove('show');
@@ -673,3 +1025,4 @@ const PetExtension = {
 jQuery(document).ready(function () {
     PetExtension.init();
 });
+[file content end]
