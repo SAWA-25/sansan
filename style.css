@@ -77,6 +77,18 @@
     color: black;
 }
 
+/* 食物样式 */
+.pet-food-item {
+    position: fixed;
+    z-index: 9998; /* 比宠物低一点点或一样 */
+    pointer-events: none;
+    animation: drop-in 0.5s ease-out;
+}
+@keyframes drop-in {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
 .pet-context-menu.show {
     display: flex;
 }
