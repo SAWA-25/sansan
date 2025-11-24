@@ -1,6 +1,4 @@
-[file name]: index.js
-[file content begin]
-// index.js - Sansan Desktop Pet V2 (Frame-by-Frame & Custom Food) with Vision & Mobile Support
+// index.js - Sansan Desktop Pet V2 (Frame-by-Frame & Custom Food)
 import { extension_settings } from "../../../extensions.js";
 
 // ==========================================
@@ -19,16 +17,6 @@ const petHtmlTemplate = `
     <!-- 食物容器 (动态生成) -->
     <div id="pet-food-container"></div>
 
-    <!-- 移动端控制按钮 -->
-    <div id="pet-mobile-controls" class="pet-mobile-controls">
-        <button class="pet-mobile-btn" id="mobile-feed">🍖</button>
-        <button class="pet-mobile-btn" id="mobile-interact">💕</button>
-        <button class="pet-mobile-btn" id="mobile-sleep">💤</button>
-        <button class="pet-mobile-btn" id="mobile-chat">💬</button>
-        <button class="pet-mobile-btn" id="mobile-look">👀</button>
-        <button class="pet-mobile-btn" id="mobile-menu">⚙️</button>
-    </div>
-
     <!-- 右键菜单 -->
     <div class="pet-context-menu" id="pet-context-menu">
         <div class="pet-mini-stats">
@@ -41,32 +29,9 @@ const petHtmlTemplate = `
         <div class="pet-menu-item" id="act-feed">🍖 投喂食物</div>
         <div class="pet-menu-item" id="act-sleep">💤 睡觉/叫醒</div>
         <div class="pet-menu-item" id="act-interact">💕 抚摸</div>
-        <div class="pet-menu-item" id="act-chat">💬 对话</div>
-        <div class="pet-menu-item" id="act-look">👀 看看周围</div>
         <div class="pet-menu-separator"></div>
         <div class="pet-menu-item" id="act-settings">⚙️ 设置</div>
         <div class="pet-menu-item" id="act-reset">📍 重置位置</div>
-    </div>
-
-    <!-- 聊天对话框 -->
-    <div class="pet-modal-overlay" id="pet-chat-modal">
-        <div class="pet-chat-panel">
-            <h3 class="pet-chat-header">与<span id="chat-pet-name">三三</span>对话</h3>
-            <div class="pet-chat-messages" id="chat-messages">
-                <div class="pet-chat-message pet-chat-bot">
-                    <span class="pet-chat-sender">三三:</span>
-                    <span class="pet-chat-text">你好呀！我可以和你聊天，也可以看看周围的环境~</span>
-                </div>
-            </div>
-            <div class="pet-chat-input-area">
-                <textarea id="chat-input" placeholder="输入你想说的话..." rows="3"></textarea>
-                <div class="pet-chat-buttons">
-                    <button id="chat-send" class="pet-btn primary">发送</button>
-                    <button id="chat-clear" class="pet-btn cancel">清空</button>
-                    <button id="chat-close" class="pet-btn cancel">关闭</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- 设置面板 -->
@@ -75,50 +40,6 @@ const petHtmlTemplate = `
             <h3 class="pet-settings-header">宠物设置 V2.0</h3>
             
             <div class="pet-settings-scroll-area">
-                <!-- API 设置区域 -->
-                <div class="pet-section-title">AI 视觉与对话设置</div>
-                <div style="font-size:12px; color:#e74c3c; margin-bottom:10px;">
-                    ⚠️ 需要配置 API 密钥才能使用对话和视觉功能
-                </div>
-
-                <div class="pet-form-group">
-                    <label>API 反向代理地址</label>
-                    <input type="text" id="pet-set-api-base" class="pet-input" placeholder="https://api.openai.com/v1">
-                    <div style="font-size:12px;color:#999">例如: https://your-proxy.com/v1</div>
-                </div>
-
-                <div class="pet-form-group">
-                    <label>API 密钥</label>
-                    <input type="password" id="pet-set-api-key" class="pet-input" placeholder="sk-...">
-                    <div style="font-size:12px;color:#999">你的 OpenAI API 密钥</div>
-                </div>
-
-                <div class="pet-form-group">
-                    <label>视觉模型</label>
-                    <select id="pet-set-vision-model" class="pet-input">
-                        <option value="gpt-4-vision-preview">gpt-4-vision-preview</option>
-                        <option value="gpt-4o">gpt-4o</option>
-                    </select>
-                </div>
-
-                <div class="pet-form-group">
-                    <label>对话模型</label>
-                    <select id="pet-set-chat-model" class="pet-input">
-                        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                        <option value="gpt-4">gpt-4</option>
-                        <option value="gpt-4-turbo">gpt-4-turbo</option>
-                    </select>
-                </div>
-
-                <div class="pet-form-group">
-                    <label>宠物性格</label>
-                    <textarea id="pet-set-personality" class="pet-input" rows="3" placeholder="描述宠物的性格特点..."></textarea>
-                    <div style="font-size:12px;color:#999">这会影响AI对话的风格</div>
-                </div>
-
-                <!-- 原有的设置内容 -->
-                <div class="pet-section-title">基本设置</div>
-
                 <div class="pet-form-group">
                     <label>宠物名字</label>
                     <input type="text" id="pet-set-name" class="pet-input">
@@ -133,13 +54,6 @@ const petHtmlTemplate = `
                     <label>动画速度 (毫秒/帧): <span id="fps-display">150ms</span></label>
                     <input type="range" id="pet-set-fps" min="50" max="500" value="150" step="10" style="width:100%">
                     <div style="font-size:12px;color:#999">数值越小动作越快</div>
-                </div>
-
-                <div class="pet-section-title">移动端设置</div>
-                <div class="pet-form-group">
-                    <label>移动端宠物大小</label>
-                    <input type="range" id="pet-set-mobile-size" min="30" max="200" value="80" style="width:100%">
-                    <div style="font-size:12px;color:#999" id="mobile-size-display">80px</div>
                 </div>
 
                 <div class="pet-section-title">资源自定义 (支持多图逐帧)</div>
@@ -231,19 +145,10 @@ const PetExtension = {
     store: {
         petName: '三三',
         size: 150,
-        mobileSize: 80, // 新增：移动端大小
         frameSpeed: 150, // 动画每帧间隔(ms)
         stats: { hunger: 80, happiness: 80, energy: 90 },
         // images 结构改变：现在除了 food 外，其他都是数组 []
-        images: { ...DefaultAssets },
-        // AI 设置
-        aiSettings: {
-            apiBase: '',
-            apiKey: '',
-            visionModel: 'gpt-4-vision-preview',
-            chatModel: 'gpt-3.5-turbo',
-            personality: '你是一只可爱的桌面宠物，名字叫三三。你喜欢和人互动，说话风格可爱活泼，会使用表情符号。'
-        }
+        images: { ...DefaultAssets } 
     },
     
     state: {
@@ -251,8 +156,6 @@ const PetExtension = {
         isSleeping: false,
         isWalking: false,
         isEating: false, // 新增：正在吃东西状态
-        isProcessingAI: false, // AI处理中
-        isMobile: false, // 新增：移动端检测
         
         currentAction: 'idle',
         
@@ -275,9 +178,6 @@ const PetExtension = {
     elements: {},
 
     init() {
-        // 检测移动端
-        this.state.isMobile = this.isMobileDevice();
-        
         if (!document.getElementById('pet-overlay-root')) {
             const div = document.createElement('div');
             div.innerHTML = petHtmlTemplate;
@@ -289,16 +189,14 @@ const PetExtension = {
             bubble: document.getElementById('pet-bubble'),
             menu: document.getElementById('pet-context-menu'),
             modal: document.getElementById('pet-settings-modal'),
-            chatModal: document.getElementById('pet-chat-modal'),
-            foodContainer: document.getElementById('pet-food-container'),
-            mobileControls: document.getElementById('pet-mobile-controls')
+            foodContainer: document.getElementById('pet-food-container')
         };
 
         this.loadData();
         
         if(!localStorage.getItem('st_desktop_pet_data_v2')) {
-            this.state.posX = window.innerWidth / 2 - (this.state.isMobile ? this.store.mobileSize/2 : 75);
-            this.state.posY = window.innerHeight / 2 - (this.state.isMobile ? this.store.mobileSize/2 : 75);
+            this.state.posX = window.innerWidth / 2 - 75;
+            this.state.posY = window.innerHeight / 2 - 75;
         }
 
         this.updateAppearance();
@@ -311,13 +209,7 @@ const PetExtension = {
         this.startStatDecay();
         this.updateStatsUI();
 
-        console.log(`[Sansan V2] Pet Initialized. Mobile: ${this.state.isMobile}`);
-    },
-
-    // 检测移动设备
-    isMobileDevice() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-               window.innerWidth <= 768;
+        console.log(`[Sansan V2] Pet Initialized.`);
     },
 
     loadData() {
@@ -328,7 +220,6 @@ const PetExtension = {
                 const data = JSON.parse(saved);
                 this.store.petName = data.petName || '三三';
                 this.store.size = data.size || 150;
-                this.store.mobileSize = data.mobileSize || 80; // 移动端大小
                 this.store.frameSpeed = data.frameSpeed || 150;
                 this.store.stats = { ...this.store.stats, ...data.stats };
                 
@@ -341,11 +232,6 @@ const PetExtension = {
                         this.store.images[key] = [this.store.images[key]];
                     }
                 });
-
-                // 加载 AI 设置
-                if (data.aiSettings) {
-                    this.store.aiSettings = { ...this.store.aiSettings, ...data.aiSettings };
-                }
 
             } catch(e) { console.error("Pet data load failed", e); }
         }
@@ -393,7 +279,7 @@ const PetExtension = {
         // 只有在行走或去吃东西时才移动
         if (!this.state.isWalking && !this.state.isEating) return;
 
-        const speed = this.state.isMobile ? 1.5 : 2.5; // 移动端移动速度稍慢
+        const speed = 2.5; // 移动速度
         const dx = this.state.targetX - this.state.posX;
         const dy = this.state.targetY - this.state.posY;
         const dist = Math.sqrt(dx*dx + dy*dy);
@@ -443,11 +329,9 @@ const PetExtension = {
     },
 
     movePetTo(x, y) {
-        const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
-        
         // 边界限制
-        const maxX = window.innerWidth - currentSize;
-        const maxY = window.innerHeight - currentSize;
+        const maxX = window.innerWidth - this.store.size;
+        const maxY = window.innerHeight - this.store.size;
         x = Math.max(0, Math.min(x, maxX));
         y = Math.max(0, Math.min(y, maxY));
 
@@ -459,7 +343,7 @@ const PetExtension = {
         
         // 气泡跟随
         const bubble = document.getElementById('pet-bubble-container');
-        bubble.style.left = (x + currentSize / 2) + 'px';
+        bubble.style.left = (x + this.store.size / 2) + 'px';
         bubble.style.top = y + 'px';
     },
 
@@ -484,16 +368,14 @@ const PetExtension = {
         this.state.isWalking = true;
         this.setAction('walk');
 
-        const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
-        
         // 随机漫步范围
-        const range = this.state.isMobile ? 150 : 300; // 移动端范围小一些
+        const range = 300;
         let tx = this.state.posX + (Math.random() * range * 2 - range);
         let ty = this.state.posY + (Math.random() * range * 2 - range);
         
         // 修正目标点在屏幕内
-        const maxX = window.innerWidth - currentSize;
-        const maxY = window.innerHeight - currentSize;
+        const maxX = window.innerWidth - this.store.size;
+        const maxY = window.innerHeight - this.store.size;
         this.state.targetX = Math.max(0, Math.min(tx, maxX));
         this.state.targetY = Math.max(0, Math.min(ty, maxY));
     },
@@ -502,230 +384,6 @@ const PetExtension = {
         this.state.isWalking = false;
         this.setAction('idle');
         this.elements.pet.style.transform = "scaleX(1)"; // 恢复朝向
-    },
-
-    // --- AI 视觉与对话功能 ---
-
-    async captureScreen() {
-        try {
-            // 使用 html2canvas 捕获屏幕
-            if (typeof html2canvas === 'undefined') {
-                // 动态加载 html2canvas
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                document.head.appendChild(script);
-                
-                return new Promise((resolve, reject) => {
-                    script.onload = () => resolve(this.captureWithHtml2Canvas());
-                    script.onerror = reject;
-                });
-            } else {
-                return await this.captureWithHtml2Canvas();
-            }
-        } catch (error) {
-            console.error('截图失败:', error);
-            throw new Error('截图功能不可用');
-        }
-    },
-
-    async captureWithHtml2Canvas() {
-        return new Promise((resolve, reject) => {
-            html2canvas(document.body, {
-                useCORS: true,
-                allowTaint: true,
-                scale: this.state.isMobile ? 0.3 : 0.5, // 移动端分辨率更低
-                logging: false
-            }).then(canvas => {
-                // 将 canvas 转换为 base64
-                const base64Image = canvas.toDataURL('image/jpeg', 0.7);
-                resolve(base64Image);
-            }).catch(reject);
-        });
-    },
-
-    async callVisionAPI(imageBase64) {
-        if (!this.store.aiSettings.apiKey) {
-            throw new Error('请先在设置中配置API密钥');
-        }
-
-        const apiUrl = this.store.aiSettings.apiBase ? 
-            `${this.store.aiSettings.apiBase}/chat/completions` : 
-            'https://api.openai.com/v1/chat/completions';
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.store.aiSettings.apiKey}`
-            },
-            body: JSON.stringify({
-                model: this.store.aiSettings.visionModel,
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "text",
-                                text: `请描述这张截图中的内容。我是一只桌面宠物，当前在屏幕上的位置大约是 (${Math.round(this.state.posX)}, ${Math.round(this.state.posY)})。请用可爱的宠物语气描述你看到了什么。`
-                            },
-                            {
-                                type: "image_url",
-                                image_url: {
-                                    url: imageBase64
-                                }
-                            }
-                        ]
-                    }
-                ],
-                max_tokens: 500
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`API请求失败: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.choices[0].message.content;
-    },
-
-    async callChatAPI(messages) {
-        if (!this.store.aiSettings.apiKey) {
-            throw new Error('请先在设置中配置API密钥');
-        }
-
-        const apiUrl = this.store.aiSettings.apiBase ? 
-            `${this.store.aiSettings.apiBase}/chat/completions` : 
-            'https://api.openai.com/v1/chat/completions';
-
-        // 添加系统提示词
-        const systemMessage = {
-            role: "system",
-            content: this.store.aiSettings.personality
-        };
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.store.aiSettings.apiKey}`
-            },
-            body: JSON.stringify({
-                model: this.store.aiSettings.chatModel,
-                messages: [systemMessage, ...messages],
-                max_tokens: 500
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`API请求失败: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.choices[0].message.content;
-    },
-
-    async lookAround() {
-        if (this.state.isProcessingAI) {
-            this.say("我正在忙着呢，稍等一下~");
-            return;
-        }
-
-        this.state.isProcessingAI = true;
-        this.setAction('interact');
-        this.say("让我看看周围...");
-
-        try {
-            const screenshot = await this.captureScreen();
-            const description = await this.callVisionAPI(screenshot);
-            
-            this.say(description);
-            this.addChatMessage('bot', description);
-            
-        } catch (error) {
-            console.error('视觉识别失败:', error);
-            this.say("哎呀，看不清楚周围呢~");
-        } finally {
-            this.state.isProcessingAI = false;
-            setTimeout(() => {
-                if(this.state.currentAction === 'interact') this.setAction('idle');
-            }, 2000);
-        }
-    },
-
-    async chatWithPet(message) {
-        if (this.state.isProcessingAI) {
-            this.say("我正在忙着呢，稍等一下~");
-            return;
-        }
-
-        this.state.isProcessingAI = true;
-        this.setAction('interact');
-
-        try {
-            // 获取聊天记录
-            const messages = this.getChatHistory();
-            messages.push({
-                role: "user",
-                content: message
-            });
-
-            const response = await this.callChatAPI(messages);
-            
-            this.say(response);
-            this.addChatMessage('bot', response);
-            
-        } catch (error) {
-            console.error('对话失败:', error);
-            this.say("我现在有点困，不想说话~");
-        } finally {
-            this.state.isProcessingAI = false;
-            setTimeout(() => {
-                if(this.state.currentAction === 'interact') this.setAction('idle');
-            }, 2000);
-        }
-    },
-
-    getChatHistory() {
-        // 简单的聊天记录管理，只保留最近5条
-        const messages = JSON.parse(localStorage.getItem('st_desktop_pet_chat_history') || '[]');
-        return messages.slice(-5);
-    },
-
-    saveChatMessage(role, content) {
-        const messages = this.getChatHistory();
-        messages.push({ role: role === 'user' ? 'user' : 'assistant', content });
-        localStorage.setItem('st_desktop_pet_chat_history', JSON.stringify(messages.slice(-10))); // 最多保存10条
-    },
-
-    addChatMessage(type, text) {
-        const messagesContainer = document.getElementById('chat-messages');
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `pet-chat-message pet-chat-${type}`;
-        
-        const sender = type === 'user' ? '你:' : `${this.store.petName}:`;
-        messageDiv.innerHTML = `
-            <span class="pet-chat-sender">${sender}</span>
-            <span class="pet-chat-text">${text}</span>
-        `;
-        
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        
-        // 保存到历史记录
-        this.saveChatMessage(type, text);
-    },
-
-    openChat() {
-        this.hideMenu();
-        document.getElementById('chat-pet-name').textContent = this.store.petName;
-        document.getElementById('chat-input').value = '';
-        document.getElementById('chat-input').focus();
-        this.elements.chatModal.classList.add('show');
-    },
-
-    closeChat() {
-        this.elements.chatModal.classList.remove('show');
     },
 
     // --- 互动系统 (喂食升级) ---
@@ -738,8 +396,7 @@ const PetExtension = {
         const foodEl = document.createElement('img');
         foodEl.src = this.store.images.food || `${basePath}food.png`;
         foodEl.className = 'pet-food-item';
-        const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
-        foodEl.style.width = (currentSize / 3) + 'px';
+        foodEl.style.width = (this.store.size / 3) + 'px';
         
         // 2. 随机位置放置食物 (稍微远离宠物，让它走过去)
         const maxX = window.innerWidth - 100;
@@ -760,8 +417,8 @@ const PetExtension = {
         this.say("哇！好吃的！");
 
         // 4. 设定目标点为食物位置 (稍微修正重叠)
-        this.state.targetX = foodX - (currentSize / 4);
-        this.state.targetY = foodY - (currentSize / 4);
+        this.state.targetX = foodX - (this.store.size / 4);
+        this.state.targetY = foodY - (this.store.size / 4);
         
         this.hideMenu();
     },
@@ -816,83 +473,53 @@ const PetExtension = {
     // --- 设置面板与事件 ---
     
     bindEvents() {
-        // 拖拽逻辑 - 桌面端
+        // 拖拽逻辑
         this.elements.pet.addEventListener('mousedown', (e) => {
             if(e.button !== 0) return;
             e.preventDefault();
-            this.startDragging(e.clientX, e.clientY);
-        });
-
-        // 触摸逻辑 - 移动端
-        this.elements.pet.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            this.startDragging(touch.clientX, touch.clientY);
+            this.state.isDragging = true;
+            this.state.isWalking = false;
+            this.state.isEating = false;
+            this.setAction('walk'); // 被提起来通常用挣扎或walk图
+            
+            const rect = this.elements.pet.getBoundingClientRect();
+            this.state.dragOffsetX = e.clientX - rect.left;
+            this.state.dragOffsetY = e.clientY - rect.top;
         });
 
         window.addEventListener('mousemove', (e) => {
             if(this.state.isDragging) {
-                this.handleDragging(e.clientX, e.clientY);
-            }
-        });
-
-        window.addEventListener('touchmove', (e) => {
-            if(this.state.isDragging) {
-                const touch = e.touches[0];
-                this.handleDragging(touch.clientX, touch.clientY);
+                this.movePetTo(e.clientX - this.state.dragOffsetX, e.clientY - this.state.dragOffsetY);
             }
         });
 
         window.addEventListener('mouseup', () => {
-            this.stopDragging();
+            if(this.state.isDragging) {
+                this.state.isDragging = false;
+                if(!this.state.isSleeping) this.setAction('idle');
+                this.saveData();
+            }
         });
 
-        window.addEventListener('touchend', () => {
-            this.stopDragging();
-        });
-
-        // 右键菜单 - 桌面端
+        // 右键菜单
         this.elements.pet.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            this.showContextMenu(e.clientX, e.clientY);
-        });
-
-        // 长按菜单 - 移动端
-        let pressTimer;
-        this.elements.pet.addEventListener('touchstart', (e) => {
-            pressTimer = setTimeout(() => {
-                const touch = e.touches[0];
-                this.showContextMenu(touch.clientX, touch.clientY);
-            }, 500); // 长按500ms显示菜单
-        });
-
-        this.elements.pet.addEventListener('touchend', () => {
-            clearTimeout(pressTimer);
+            this.elements.menu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+            this.elements.menu.style.top = Math.min(e.clientY, window.innerHeight - 250) + 'px';
+            this.elements.menu.classList.add('show');
+            this.updateStatsUI();
         });
 
         window.addEventListener('click', (e) => {
             if(!e.target.closest('.pet-context-menu')) this.hideMenu();
         });
 
-        // 移动端控制按钮
-        if (this.state.isMobile) {
-            document.getElementById('mobile-feed').onclick = () => this.spawnFood();
-            document.getElementById('mobile-interact').onclick = () => this.interact();
-            document.getElementById('mobile-sleep').onclick = () => this.toggleSleep();
-            document.getElementById('mobile-chat').onclick = () => this.openChat();
-            document.getElementById('mobile-look').onclick = () => this.lookAround();
-            document.getElementById('mobile-menu').onclick = () => this.openSettings();
-        }
-
         // 按钮绑定
         document.getElementById('act-feed').onclick = () => this.spawnFood();
         document.getElementById('act-sleep').onclick = () => this.toggleSleep();
         document.getElementById('act-interact').onclick = () => this.interact();
-        document.getElementById('act-chat').onclick = () => this.openChat();
-        document.getElementById('act-look').onclick = () => this.lookAround();
         document.getElementById('act-reset').onclick = () => {
-            const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
-            this.movePetTo(window.innerWidth/2 - currentSize/2, window.innerHeight/2 - currentSize/2);
+            this.movePetTo(window.innerWidth/2, window.innerHeight/2);
             this.hideMenu();
         };
         
@@ -901,45 +528,11 @@ const PetExtension = {
         document.getElementById('btn-close-settings').onclick = () => this.elements.modal.classList.remove('show');
         document.getElementById('btn-save-settings').onclick = this.applySettings.bind(this);
 
-        // 聊天面板逻辑
-        document.getElementById('chat-send').onclick = () => {
-            const input = document.getElementById('chat-input');
-            const message = input.value.trim();
-            if (message) {
-                this.addChatMessage('user', message);
-                input.value = '';
-                this.chatWithPet(message);
-            }
-        };
-
-        document.getElementById('chat-clear').onclick = () => {
-            document.getElementById('chat-messages').innerHTML = `
-                <div class="pet-chat-message pet-chat-bot">
-                    <span class="pet-chat-sender">${this.store.petName}:</span>
-                    <span class="pet-chat-text">你好呀！我可以和你聊天，也可以看看周围的环境~</span>
-                </div>
-            `;
-            localStorage.removeItem('st_desktop_pet_chat_history');
-        };
-
-        document.getElementById('chat-close').onclick = () => this.closeChat();
-        document.getElementById('chat-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('chat-send').click();
-            }
-        });
-
         document.getElementById('pet-set-size').addEventListener('input', (e) => {
             document.getElementById('size-display').textContent = e.target.value + 'px';
         });
-        
         document.getElementById('pet-set-fps').addEventListener('input', (e) => {
             document.getElementById('fps-display').textContent = e.target.value + 'ms';
-        });
-
-        document.getElementById('pet-set-mobile-size').addEventListener('input', (e) => {
-            document.getElementById('mobile-size-display').textContent = e.target.value + 'px';
         });
 
         // 绑定多图上传
@@ -949,48 +542,6 @@ const PetExtension = {
         this.bindMultiUploader('sleep', 'file-sleep', 'uploader-sleep', 'img-sleep', 'txt-sleep');
         // 单图上传
         this.bindMultiUploader('food', 'file-food', 'uploader-food', 'img-food', 'txt-food', true);
-
-        // 窗口大小变化时重新调整位置
-        window.addEventListener('resize', () => {
-            const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
-            const maxX = window.innerWidth - currentSize;
-            const maxY = window.innerHeight - currentSize;
-            
-            this.state.posX = Math.min(this.state.posX, maxX);
-            this.state.posY = Math.min(this.state.posY, maxY);
-            this.movePetTo(this.state.posX, this.state.posY);
-        });
-    },
-
-    // 拖拽相关方法
-    startDragging(clientX, clientY) {
-        this.state.isDragging = true;
-        this.state.isWalking = false;
-        this.state.isEating = false;
-        this.setAction('walk');
-        
-        const rect = this.elements.pet.getBoundingClientRect();
-        this.state.dragOffsetX = clientX - rect.left;
-        this.state.dragOffsetY = clientY - rect.top;
-    },
-
-    handleDragging(clientX, clientY) {
-        this.movePetTo(clientX - this.state.dragOffsetX, clientY - this.state.dragOffsetY);
-    },
-
-    stopDragging() {
-        if(this.state.isDragging) {
-            this.state.isDragging = false;
-            if(!this.state.isSleeping) this.setAction('idle');
-            this.saveData();
-        }
-    },
-
-    showContextMenu(clientX, clientY) {
-        this.elements.menu.style.left = Math.min(clientX, window.innerWidth - 160) + 'px';
-        this.elements.menu.style.top = Math.min(clientY, window.innerHeight - 250) + 'px';
-        this.elements.menu.classList.add('show');
-        this.updateStatsUI();
     },
 
     openSettings() {
@@ -1000,15 +551,6 @@ const PetExtension = {
         document.getElementById('size-display').textContent = this.store.size + 'px';
         document.getElementById('pet-set-fps').value = this.store.frameSpeed;
         document.getElementById('fps-display').textContent = this.store.frameSpeed + 'ms';
-        document.getElementById('pet-set-mobile-size').value = this.store.mobileSize;
-        document.getElementById('mobile-size-display').textContent = this.store.mobileSize + 'px';
-
-        // AI 设置
-        document.getElementById('pet-set-api-base').value = this.store.aiSettings.apiBase;
-        document.getElementById('pet-set-api-key').value = this.store.aiSettings.apiKey;
-        document.getElementById('pet-set-vision-model').value = this.store.aiSettings.visionModel;
-        document.getElementById('pet-set-chat-model').value = this.store.aiSettings.chatModel;
-        document.getElementById('pet-set-personality').value = this.store.aiSettings.personality;
 
         // 预览图逻辑：如果是数组，取第一张；如果是字符串，直接用
         const refreshPreview = (key) => {
@@ -1037,16 +579,7 @@ const PetExtension = {
     applySettings() {
         this.store.petName = document.getElementById('pet-set-name').value;
         this.store.size = parseInt(document.getElementById('pet-set-size').value);
-        this.store.mobileSize = parseInt(document.getElementById('pet-set-mobile-size').value);
         this.store.frameSpeed = parseInt(document.getElementById('pet-set-fps').value);
-        
-        // 保存 AI 设置
-        this.store.aiSettings.apiBase = document.getElementById('pet-set-api-base').value;
-        this.store.aiSettings.apiKey = document.getElementById('pet-set-api-key').value;
-        this.store.aiSettings.visionModel = document.getElementById('pet-set-vision-model').value;
-        this.store.aiSettings.chatModel = document.getElementById('pet-set-chat-model').value;
-        this.store.aiSettings.personality = document.getElementById('pet-set-personality').value;
-
         this.saveData();
         this.updateAppearance();
         this.elements.modal.classList.remove('show');
@@ -1101,14 +634,7 @@ const PetExtension = {
     },
 
     updateAppearance() {
-        const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
-        this.elements.pet.style.width = currentSize + 'px';
-        
-        // 显示/隐藏移动端控制按钮
-        if (this.elements.mobileControls) {
-            this.elements.mobileControls.style.display = this.state.isMobile ? 'flex' : 'none';
-        }
-        
+        this.elements.pet.style.width = this.store.size + 'px';
         this.setAction(this.state.currentAction);
     },
 
@@ -1147,4 +673,3 @@ const PetExtension = {
 jQuery(document).ready(function () {
     PetExtension.init();
 });
-[file content end]
