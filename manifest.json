@@ -1,0 +1,9 @@
+{
+    "name": "Desktop Pet Overlay",
+    "display_name": "桌面宠物 (Desktop Pet)",
+    "version": "1.0.0",
+    "author": "YourName",
+    "description": "Desktop pet overlay for SillyTavern.",
+    "css": "style.css",
+    "js": "index.js"
+}
