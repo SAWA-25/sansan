@@ -123,10 +123,10 @@ const generateEmojiBlob = (emoji) => {
    例如: idle: "scripts/extensions/st-desktop-pet/assets/idle.gif",
 */
 const DefaultAssets = {
-    idle: generateEmojiBlob('🐱'),
-    walk: generateEmojiBlob('🐈'),
-    interact: generateEmojiBlob('😻'),
-    drag: generateEmojiBlob('🙀'),
+    idle: "scripts/extensions/sansan/assets/idle.gif",
+    walk: "scripts/extensions/sansan/assets/walk.gif",
+    interact: "scripts/extensions/sansan/assets/happy.gif",
+    drag: "scripts/extensions/sansan/assets/drag.gif",
     sleep: generateEmojiBlob('💤')
 };
 
