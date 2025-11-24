@@ -1,25 +1,32 @@
-// index.js - 完整增强版
+// index.js - Sansan Desktop Pet V2 (Frame-by-Frame & Custom Food)
 import { extension_settings } from "../../../extensions.js";
 
-// 1. 定义 HTML 模板 (增加了所有动作的上传按钮)
+// ==========================================
+// 1. HTML 结构模板 (升级版)
+// ==========================================
 const petHtmlTemplate = `
 <div id="pet-overlay-root">
+    <!-- 气泡 -->
     <div id="pet-bubble-container">
         <div class="pet-speech-bubble" id="pet-bubble">喵~</div>
     </div>
 
+    <!-- 宠物本体 (图片) -->
     <img id="pet-entity" src="" alt="Pet" draggable="false">
+
+    <!-- 食物容器 (动态生成) -->
+    <div id="pet-food-container"></div>
 
     <!-- 右键菜单 -->
     <div class="pet-context-menu" id="pet-context-menu">
         <div class="pet-mini-stats">
-            <div class="pet-stat-row"><span>饱食</span><span id="val-hunger">80%</span></div>
+            <div class="pet-stat-row"><span>饱食度</span><span id="val-hunger">80%</span></div>
             <div class="pet-stat-bar-bg"><div class="pet-stat-bar-fill" id="bar-hunger" style="width: 80%"></div></div>
             <div style="height:5px"></div>
-            <div class="pet-stat-row"><span>快乐</span><span id="val-happiness">60%</span></div>
+            <div class="pet-stat-row"><span>心情值</span><span id="val-happiness">60%</span></div>
             <div class="pet-stat-bar-bg"><div class="pet-stat-bar-fill" id="bar-happiness" style="width: 60%; background:#c8e6f8"></div></div>
         </div>
-        <div class="pet-menu-item" id="act-feed">🍖 喂食</div>
+        <div class="pet-menu-item" id="act-feed">🍖 投喂食物</div>
         <div class="pet-menu-item" id="act-sleep">💤 睡觉/叫醒</div>
         <div class="pet-menu-item" id="act-interact">💕 抚摸</div>
         <div class="pet-menu-separator"></div>
@@ -30,139 +37,144 @@ const petHtmlTemplate = `
     <!-- 设置面板 -->
     <div class="pet-modal-overlay" id="pet-settings-modal">
         <div class="pet-settings-panel">
-            <h3 style="text-align:center;color:#666;margin-bottom:20px;">宠物设置</h3>
+            <h3 class="pet-settings-header">宠物设置 V2.0</h3>
             
-            <div class="pet-form-group">
-                <label>宠物名字</label>
-                <input type="text" id="pet-set-name" placeholder="给它起个名" style="width:100%; padding:8px; border:1px solid #eee; border-radius:8px; color:black;">
-            </div>
-
-            <div class="pet-form-group">
-                <label>大小 (像素)</label>
-                <input type="range" id="pet-set-size" min="50" max="400" value="150" style="width:100%">
-            </div>
-
-            <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
-            <label style="display:block; margin-bottom:10px; color:#666; font-weight:bold;">自定义动作图 (GIF/PNG)</label>
-
-            <!-- 待机 Idle -->
-            <div class="pet-form-group">
-                <label>待机 (Idle)</label>
-                <div class="pet-image-uploader" id="uploader-idle">
-                    <span class="preview-text" id="prev-text-idle">点击上传</span>
-                    <img id="prev-img-idle" style="display:none">
+            <div class="pet-settings-scroll-area">
+                <div class="pet-form-group">
+                    <label>宠物名字</label>
+                    <input type="text" id="pet-set-name" class="pet-input">
                 </div>
-                <input type="file" id="upload-idle" accept="image/*" style="display:none">
-            </div>
 
-            <!-- 行走 Walk -->
-             <div class="pet-form-group">
-                <label>行走 (Walk)</label>
-                <div class="pet-image-uploader" id="uploader-walk">
-                    <span class="preview-text" id="prev-text-walk">点击上传 (可选)</span>
-                    <img id="prev-img-walk" style="display:none">
+                <div class="pet-form-group">
+                    <label>大小: <span id="size-display">150px</span></label>
+                    <input type="range" id="pet-set-size" min="50" max="400" value="150" style="width:100%">
                 </div>
-                <input type="file" id="upload-walk" accept="image/*" style="display:none">
-            </div>
+                
+                <div class="pet-form-group">
+                    <label>动画速度 (毫秒/帧): <span id="fps-display">150ms</span></label>
+                    <input type="range" id="pet-set-fps" min="50" max="500" value="150" step="10" style="width:100%">
+                    <div style="font-size:12px;color:#999">数值越小动作越快</div>
+                </div>
 
-            <!-- 互动 Interact -->
-            <div class="pet-form-group">
-                <label>互动/点击 (Interact)</label>
-                <div class="pet-image-uploader" id="uploader-interact">
-                    <span class="preview-text" id="prev-text-interact">点击上传 (可选)</span>
-                    <img id="prev-img-interact" style="display:none">
+                <div class="pet-section-title">资源自定义 (支持多图逐帧)</div>
+                <div style="font-size:12px; color:#e74c3c; margin-bottom:10px;">
+                    ⚠️ 注意：请勿上传过大的图片，否则无法保存。逐帧动画请按住 Ctrl/Shift 选择多张图片。
                 </div>
-                <input type="file" id="upload-interact" accept="image/*" style="display:none">
-            </div>
 
-            <!-- 拖拽 Drag -->
-            <div class="pet-form-group">
-                <label>被拖拽 (Drag)</label>
-                <div class="pet-image-uploader" id="uploader-drag">
-                    <span class="preview-text" id="prev-text-drag">点击上传 (可选)</span>
-                    <img id="prev-img-drag" style="display:none">
-                </div>
-                <input type="file" id="upload-drag" accept="image/*" style="display:none">
-            </div>
+                <div class="pet-upload-grid">
+                    <!-- 1. 待机 Idle -->
+                    <div class="pet-upload-item">
+                        <label>待机 (单张/多张)</label>
+                        <div class="pet-image-uploader" id="uploader-idle">
+                            <span class="preview-text" id="txt-idle">点击上传</span>
+                            <img id="img-idle" class="preview-img">
+                        </div>
+                        <input type="file" id="file-idle" accept="image/*" multiple hidden>
+                    </div>
 
-            <!-- 睡觉 Sleep -->
-            <div class="pet-form-group">
-                <label>睡觉 (Sleep)</label>
-                <div class="pet-image-uploader" id="uploader-sleep">
-                    <span class="preview-text" id="prev-text-sleep">点击上传 (可选)</span>
-                    <img id="prev-img-sleep" style="display:none">
+                    <!-- 2. 行走 Walk -->
+                    <div class="pet-upload-item">
+                        <label>行走 (建议多张)</label>
+                        <div class="pet-image-uploader" id="uploader-walk">
+                            <span class="preview-text" id="txt-walk">点击上传</span>
+                            <img id="img-walk" class="preview-img">
+                        </div>
+                        <input type="file" id="file-walk" accept="image/*" multiple hidden>
+                    </div>
+
+                    <!-- 3. 互动 Interact -->
+                    <div class="pet-upload-item">
+                        <label>互动/抚摸</label>
+                        <div class="pet-image-uploader" id="uploader-interact">
+                            <span class="preview-text" id="txt-interact">点击上传</span>
+                            <img id="img-interact" class="preview-img">
+                        </div>
+                        <input type="file" id="file-interact" accept="image/*" multiple hidden>
+                    </div>
+
+                    <!-- 4. 食物 Food -->
+                    <div class="pet-upload-item">
+                        <label>自定义食物 (单张)</label>
+                        <div class="pet-image-uploader" id="uploader-food">
+                            <span class="preview-text" id="txt-food">点击上传</span>
+                            <img id="img-food" class="preview-img">
+                        </div>
+                        <input type="file" id="file-food" accept="image/*" hidden>
+                    </div>
+
+                    <!-- 5. 睡觉 Sleep -->
+                    <div class="pet-upload-item">
+                        <label>睡觉</label>
+                        <div class="pet-image-uploader" id="uploader-sleep">
+                            <span class="preview-text" id="txt-sleep">点击上传</span>
+                            <img id="img-sleep" class="preview-img">
+                        </div>
+                        <input type="file" id="file-sleep" accept="image/*" multiple hidden>
+                    </div>
                 </div>
-                <input type="file" id="upload-sleep" accept="image/*" style="display:none">
             </div>
 
             <div class="pet-settings-buttons">
-                <button class="pet-btn" id="btn-save-settings">保存并应用</button>
-                <button class="pet-btn pet-btn-cancel" id="btn-close-settings">取消</button>
+                <button class="pet-btn primary" id="btn-save-settings">保存设置</button>
+                <button class="pet-btn cancel" id="btn-close-settings">取消</button>
             </div>
         </div>
     </div>
 </div>
 `;
 
-// 生成默认 Emoji 图片的函数
-const generateEmojiBlob = (emoji) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d');
-    ctx.font = '100px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, 64, 64);
-    return canvas.toDataURL();
-};
-
-/* 
-   注意：
-   extensionName 必须和你的 GitHub 仓库名完全一致！
-   根据截图，你的仓库名是 "sansan"
-*/
+// ==========================================
+// 2. 配置与默认资源
+// ==========================================
 const extensionName = "sansan"; 
 const basePath = `scripts/extensions/${extensionName}/assets/`;
 
+// 默认使用单张 GIF，如果用户没上传，就用这些
 const DefaultAssets = {
-    // 待机状态：我暂时用 happy.gif，如果你有专门的站立图可以换
-    idle:     `${basePath}idle.gif`, 
-    
-    // 行走状态：对应你文件夹里的 walk.gif
-    walk:     `${basePath}walk.gif`,  
-    
-    // 互动/点击：对应你文件夹里的 happy.gif
-    interact: `${basePath}happy.gif`, 
-    
-    // 被拖拽：对应你文件夹里的 drag.gif
-    drag:     `${basePath}drag.gif`,  
-    
-    // 睡觉：你文件夹里暂时没有 sleep.gif，我先用 happy.gif 顶替，或者你可以上传一个 sleep.gif
-    sleep:    `${basePath}sleep.gif`  
+    idle:     [`${basePath}idle.gif`], 
+    walk:     [`${basePath}walk.gif`],  
+    interact: [`${basePath}happy.gif`], 
+    sleep:    [`${basePath}sleep.gif`],
+    food:     `${basePath}food.png` // 默认食物图片，如果文件夹里没有，会显示不出来
 };
 
+// ==========================================
+// 3. 核心逻辑
+// ==========================================
 const PetExtension = {
     store: {
-        petName: '小猫',
+        petName: '三三',
         size: 150,
-        images: { ...DefaultAssets },
-        stats: { hunger: 80, happiness: 80, energy: 90 }
+        frameSpeed: 150, // 动画每帧间隔(ms)
+        stats: { hunger: 80, happiness: 80, energy: 90 },
+        // images 结构改变：现在除了 food 外，其他都是数组 []
+        images: { ...DefaultAssets } 
     },
+    
     state: {
         isDragging: false,
         isSleeping: false,
         isWalking: false,
+        isEating: false, // 新增：正在吃东西状态
+        
         currentAction: 'idle',
-        posX: window.innerWidth / 2 - 75,
-        posY: window.innerHeight / 2 - 75,
-        direction: 1,
+        
+        // 坐标系统
+        posX: 100, posY: 100,
         targetX: 0, targetY: 0,
-        dragOffsetX: 0, dragOffsetY: 0,
-        walkTimer: null,
-        behaviorLoop: null,
-        statLoop: null
+        
+        // 动画系统
+        frameIndex: 0,
+        lastFrameTime: 0,
+        
+        timers: {
+            behavior: null,
+            stats: null,
+            bubble: null,
+            animationLoop: null // 统一的游戏循环
+        }
     },
+
     elements: {},
 
     init() {
@@ -174,78 +186,177 @@ const PetExtension = {
 
         this.elements = {
             pet: document.getElementById('pet-entity'),
-            bubbleContainer: document.getElementById('pet-bubble-container'),
             bubble: document.getElementById('pet-bubble'),
             menu: document.getElementById('pet-context-menu'),
             modal: document.getElementById('pet-settings-modal'),
-            root: document.getElementById('pet-overlay-root')
+            foodContainer: document.getElementById('pet-food-container')
         };
 
         this.loadData();
+        
+        if(!localStorage.getItem('st_desktop_pet_data_v2')) {
+            this.state.posX = window.innerWidth / 2 - 75;
+            this.state.posY = window.innerHeight / 2 - 75;
+        }
+
         this.updateAppearance();
-        this.startBehaviorLoop();
+        this.movePetTo(this.state.posX, this.state.posY);
+        this.bindEvents();
+        
+        // 启动统一游戏循环 (包含移动和动画)
+        this.startGameLoop();
+        this.startBehaviorAI();
         this.startStatDecay();
         this.updateStatsUI();
-        this.movePet(this.state.posX, this.state.posY);
-        this.bindEvents();
+
+        console.log(`[Sansan V2] Pet Initialized.`);
     },
 
     loadData() {
-        const saved = localStorage.getItem('st_desktop_pet_data');
+        // 为了区分旧版数据，使用新的 key: _v2
+        const saved = localStorage.getItem('st_desktop_pet_data_v2');
         if (saved) {
             try {
                 const data = JSON.parse(saved);
-                this.store.petName = data.petName || this.store.petName;
-                this.store.size = data.size || this.store.size;
-                this.store.stats = data.stats || this.store.stats;
-                if(data.images) this.store.images = { ...this.store.images, ...data.images };
-            } catch(e) { console.error(e); }
+                this.store.petName = data.petName || '三三';
+                this.store.size = data.size || 150;
+                this.store.frameSpeed = data.frameSpeed || 150;
+                this.store.stats = { ...this.store.stats, ...data.stats };
+                
+                // 兼容性合并：如果某个动作没有数据，使用默认
+                this.store.images = { ...DefaultAssets, ...data.images };
+                
+                // 确保数据类型正确 (防止旧版字符串污染新版数组逻辑)
+                ['idle', 'walk', 'interact', 'sleep'].forEach(key => {
+                    if (typeof this.store.images[key] === 'string') {
+                        this.store.images[key] = [this.store.images[key]];
+                    }
+                });
+
+            } catch(e) { console.error("Pet data load failed", e); }
         }
     },
 
     saveData() {
-        localStorage.setItem('st_desktop_pet_data', JSON.stringify(this.store));
+        try {
+            localStorage.setItem('st_desktop_pet_data_v2', JSON.stringify(this.store));
+        } catch (e) {
+            this.say("存储空间不足，无法保存新图片！");
+            console.error("Storage full", e);
+        }
     },
 
-    movePet(x, y) {
+    // --- 核心游戏循环 (动画 + 移动) ---
+    startGameLoop() {
+        const loop = (timestamp) => {
+            if (!this.state.lastFrameTime) this.state.lastFrameTime = timestamp;
+
+            // 1. 处理帧动画 (Frame Animation)
+            const frames = this.store.images[this.state.currentAction];
+            // 如果存在多帧，且达到了切换时间
+            if (frames && frames.length > 1) {
+                if (timestamp - this.state.lastFrameTime > this.store.frameSpeed) {
+                    this.state.frameIndex = (this.state.frameIndex + 1) % frames.length;
+                    this.elements.pet.src = frames[this.state.frameIndex];
+                    this.state.lastFrameTime = timestamp;
+                }
+            } else if (frames && frames.length === 1) {
+                // 单张图 (GIF或PNG)，只在动作切换时赋值一次，避免重复赋值造成闪烁
+                if (this.elements.pet.src !== frames[0]) {
+                    this.elements.pet.src = frames[0];
+                }
+            }
+
+            // 2. 处理物理移动 (Movement)
+            this.updateMovement();
+
+            this.state.timers.animationLoop = requestAnimationFrame(loop);
+        };
+        this.state.timers.animationLoop = requestAnimationFrame(loop);
+    },
+
+    updateMovement() {
+        // 只有在行走或去吃东西时才移动
+        if (!this.state.isWalking && !this.state.isEating) return;
+
+        const speed = 2.5; // 移动速度
+        const dx = this.state.targetX - this.state.posX;
+        const dy = this.state.targetY - this.state.posY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        // 到达目的地
+        if (dist < 10) {
+            if (this.state.isEating) {
+                this.finishEating();
+            } else {
+                this.stopWalking();
+            }
+            return;
+        }
+
+        // 计算这一帧的位移
+        const moveX = (dx / dist) * speed;
+        const moveY = (dy / dist) * speed;
+        
+        this.movePetTo(this.state.posX + moveX, this.state.posY + moveY);
+
+        // 自动转向
+        if (dx < 0) {
+            this.elements.pet.style.transform = "scaleX(-1)"; 
+        } else {
+            this.elements.pet.style.transform = "scaleX(1)";
+        }
+    },
+
+    // 设置动作状态
+    setAction(actionKey) {
+        if (this.state.currentAction === actionKey) return;
+        
+        // 保护：睡觉时不能切换动作，除非是醒来
+        if (this.state.isSleeping && actionKey !== 'idle') return;
+
+        this.state.currentAction = actionKey;
+        this.state.frameIndex = 0; // 重置动画帧
+        
+        // 立即显示第一帧，避免等待
+        const frames = this.store.images[actionKey];
+        if (frames && frames.length > 0) {
+            this.elements.pet.src = frames[0];
+        } else {
+            // 资源缺失回退
+            this.elements.pet.src = this.store.images.idle[0]; 
+        }
+    },
+
+    movePetTo(x, y) {
+        // 边界限制
         const maxX = window.innerWidth - this.store.size;
         const maxY = window.innerHeight - this.store.size;
         x = Math.max(0, Math.min(x, maxX));
         y = Math.max(0, Math.min(y, maxY));
+
         this.state.posX = x;
         this.state.posY = y;
+
         this.elements.pet.style.left = x + 'px';
         this.elements.pet.style.top = y + 'px';
-        this.elements.bubbleContainer.style.left = (x + this.store.size / 2) + 'px';
-        this.elements.bubbleContainer.style.top = y + 'px';
-    },
-
-    changeAction(action) {
-        if (this.state.isSleeping && action !== 'sleep') return;
-        if (this.state.currentAction === action) return;
         
-        this.state.currentAction = action;
-        // 如果该动作没有对应的图，回退到 idle
-        let imgSrc = this.store.images[action] || this.store.images.idle;
-        this.elements.pet.src = imgSrc;
+        // 气泡跟随
+        const bubble = document.getElementById('pet-bubble-container');
+        bubble.style.left = (x + this.store.size / 2) + 'px';
+        bubble.style.top = y + 'px';
     },
 
-    say(text) {
-        this.elements.bubble.textContent = text;
-        this.elements.bubble.classList.add('show');
-        if (this.bubbleTimer) clearTimeout(this.bubbleTimer);
-        this.bubbleTimer = setTimeout(() => {
-            this.elements.bubble.classList.remove('show');
-        }, 3000);
-    },
-
-    startBehaviorLoop() {
+    // --- 智能行为 AI ---
+    startBehaviorAI() {
         const loop = () => {
-            const delay = 3000 + Math.random() * 5000;
-            this.state.behaviorLoop = setTimeout(() => {
-                if (!this.state.isDragging && !this.state.isSleeping && document.visibilityState === 'visible') {
-                    if (Math.random() < 0.6) this.startWalking();
-                    else this.stopWalking();
+            const delay = 4000 + Math.random() * 6000; // 4~10秒思考一次
+            this.state.timers.behavior = setTimeout(() => {
+                // 只有在待机且可见时才行动
+                if (this.state.currentAction === 'idle' && !this.state.isDragging && !this.state.isSleeping && !this.state.isEating) {
+                    if (Math.random() < 0.7) {
+                        this.startWalkingRandomly();
+                    }
                 }
                 loop();
             }, delay);
@@ -253,150 +364,139 @@ const PetExtension = {
         loop();
     },
 
-    startWalking() {
-        if (this.state.isDragging || this.state.isSleeping) return;
-        
-        // 如果没有上传行走图片，就保持 idle 图片但移动位置
-        this.changeAction('walk');
+    startWalkingRandomly() {
         this.state.isWalking = true;
+        this.setAction('walk');
+
+        // 随机漫步范围
+        const range = 300;
+        let tx = this.state.posX + (Math.random() * range * 2 - range);
+        let ty = this.state.posY + (Math.random() * range * 2 - range);
         
-        const range = 200; 
-        let targetX = this.state.posX + (Math.random() * range * 2 - range);
-        let targetY = this.state.posY + (Math.random() * range * 2 - range);
+        // 修正目标点在屏幕内
         const maxX = window.innerWidth - this.store.size;
         const maxY = window.innerHeight - this.store.size;
-        this.state.targetX = Math.max(0, Math.min(targetX, maxX));
-        this.state.targetY = Math.max(0, Math.min(targetY, maxY));
-
-        if (this.state.targetX < this.state.posX) {
-            this.elements.pet.classList.add('pet-flipped');
-        } else {
-            this.elements.pet.classList.remove('pet-flipped');
-        }
-        this.processMovement();
-    },
-
-    processMovement() {
-        if (!this.state.isWalking) return;
-        const speed = 2;
-        const dx = this.state.targetX - this.state.posX;
-        const dy = this.state.targetY - this.state.posY;
-        const distance = Math.sqrt(dx*dx + dy*dy);
-
-        if (distance < 5) {
-            this.stopWalking();
-            return;
-        }
-        this.movePet(this.state.posX + (dx/distance)*speed, this.state.posY + (dy/distance)*speed);
-        this.state.walkTimer = requestAnimationFrame(() => this.processMovement());
+        this.state.targetX = Math.max(0, Math.min(tx, maxX));
+        this.state.targetY = Math.max(0, Math.min(ty, maxY));
     },
 
     stopWalking() {
         this.state.isWalking = false;
-        cancelAnimationFrame(this.state.walkTimer);
-        this.changeAction('idle');
+        this.setAction('idle');
+        this.elements.pet.style.transform = "scaleX(1)"; // 恢复朝向
     },
 
-    startStatDecay() {
-        this.state.statLoop = setInterval(() => {
-            if (!this.state.isSleeping) {
-                this.store.stats.hunger = Math.max(0, this.store.stats.hunger - 1);
-                this.store.stats.happiness = Math.max(0, this.store.stats.happiness - 1);
-            } else {
-                this.store.stats.energy = Math.min(100, this.store.stats.energy + 2);
-            }
-            this.updateStatsUI();
-            this.saveData();
-        }, 10000);
-    },
+    // --- 互动系统 (喂食升级) ---
 
-    updateStatsUI() {
-        document.getElementById('val-hunger').textContent = Math.floor(this.store.stats.hunger) + '%';
-        document.getElementById('bar-hunger').style.width = this.store.stats.hunger + '%';
-        document.getElementById('val-happiness').textContent = Math.floor(this.store.stats.happiness) + '%';
-        document.getElementById('bar-happiness').style.width = this.store.stats.happiness + '%';
-    },
+    spawnFood() {
+        // 如果已经在吃东西，忽略
+        if(this.state.isEating) return;
 
-    updateAppearance() {
-        this.elements.pet.style.width = this.store.size + 'px';
-        this.changeAction('idle');
-    },
-
-    // Actions
-    feed() {
-        this.stopWalking();
-        this.store.stats.hunger = Math.min(100, this.store.stats.hunger + 20);
-        this.say("吧唧吧唧... 好吃！");
+        // 1. 生成食物 DOM
+        const foodEl = document.createElement('img');
+        foodEl.src = this.store.images.food || `${basePath}food.png`;
+        foodEl.className = 'pet-food-item';
+        foodEl.style.width = (this.store.size / 3) + 'px';
         
-        // 尝试播放 Interact 动画（通常吃饭用Interact或者专门的Eat，这里简化）
-        this.changeAction('interact'); 
+        // 2. 随机位置放置食物 (稍微远离宠物，让它走过去)
+        const maxX = window.innerWidth - 100;
+        const maxY = window.innerHeight - 100;
+        const foodX = Math.max(50, Math.random() * maxX);
+        const foodY = Math.max(50, Math.random() * maxY);
+        
+        foodEl.style.left = foodX + 'px';
+        foodEl.style.top = foodY + 'px';
+        
+        this.elements.foodContainer.innerHTML = ''; // 清空旧食物
+        this.elements.foodContainer.appendChild(foodEl);
+
+        // 3. 宠物状态切换
+        this.state.isEating = true;
+        this.state.isWalking = false; // 停止随机漫步
+        this.setAction('walk'); // 播放走路动画
+        this.say("哇！好吃的！");
+
+        // 4. 设定目标点为食物位置 (稍微修正重叠)
+        this.state.targetX = foodX - (this.store.size / 4);
+        this.state.targetY = foodY - (this.store.size / 4);
+        
+        this.hideMenu();
+    },
+
+    finishEating() {
+        // 到达食物位置
+        this.elements.foodContainer.innerHTML = ''; // 吃掉食物
+        this.store.stats.hunger = Math.min(100, this.store.stats.hunger + 25);
+        this.store.stats.happiness = Math.min(100, this.store.stats.happiness + 5);
+        
+        this.say("吧唧吧唧... 真香！");
+        this.setAction('interact'); // 播放开心的动画
         this.updateStatsUI();
         
         setTimeout(() => {
-            if(!this.state.isWalking && !this.state.isSleeping) this.changeAction('idle');
-        }, 2000);
+            this.state.isEating = false;
+            this.setAction('idle');
+        }, 2500);
+    },
+
+    interact() {
+        if(this.state.isSleeping || this.state.isEating) return;
+        this.store.stats.happiness = Math.min(100, this.store.stats.happiness + 10);
+        this.say("蹭蹭你~");
+        this.setAction('interact');
+        this.updateStatsUI();
         this.hideMenu();
+
+        setTimeout(() => {
+            if(this.state.currentAction === 'interact') this.setAction('idle');
+        }, 2000);
     },
 
     toggleSleep() {
         this.state.isSleeping = !this.state.isSleeping;
         this.hideMenu();
+
         if(this.state.isSleeping) {
-            this.stopWalking();
-            this.changeAction('sleep');
-            this.say("晚安...");
-            this.elements.pet.style.opacity = "0.8";
+            this.state.isWalking = false;
+            this.state.isEating = false;
+            this.elements.foodContainer.innerHTML = '';
+            this.setAction('sleep');
+            this.say("晚安... Zzz");
+            this.elements.pet.style.opacity = "0.7";
         } else {
-            this.changeAction('idle');
-            this.say("早安！");
+            this.setAction('idle');
+            this.say("睡醒啦！");
             this.elements.pet.style.opacity = "1";
         }
     },
 
-    interact() {
-        this.stopWalking();
-        this.store.stats.happiness = Math.min(100, this.store.stats.happiness + 5);
-        this.changeAction('interact');
-        this.say("喵~");
-        this.updateStatsUI();
-        setTimeout(() => {
-            if(!this.state.isWalking && !this.state.isSleeping) this.changeAction('idle');
-        }, 1500);
-        this.hideMenu();
-    },
-
-    resetPosition() {
-        this.movePet(window.innerWidth/2 - this.store.size/2, window.innerHeight/2 - this.store.size/2);
-        this.hideMenu();
-    },
-
-    hideMenu() { this.elements.menu.classList.remove('show'); },
+    // --- 设置面板与事件 ---
     
     bindEvents() {
-        // 拖拽
+        // 拖拽逻辑
         this.elements.pet.addEventListener('mousedown', (e) => {
             if(e.button !== 0) return;
+            e.preventDefault();
             this.state.isDragging = true;
-            this.stopWalking();
-            this.changeAction('drag');
-            this.state.dragOffsetX = e.clientX - this.elements.pet.getBoundingClientRect().left;
-            this.state.dragOffsetY = e.clientY - this.elements.pet.getBoundingClientRect().top;
-            this.elements.pet.style.transition = 'none';
-            this.elements.bubbleContainer.style.transition = 'none';
+            this.state.isWalking = false;
+            this.state.isEating = false;
+            this.setAction('walk'); // 被提起来通常用挣扎或walk图
+            
+            const rect = this.elements.pet.getBoundingClientRect();
+            this.state.dragOffsetX = e.clientX - rect.left;
+            this.state.dragOffsetY = e.clientY - rect.top;
         });
 
         window.addEventListener('mousemove', (e) => {
             if(this.state.isDragging) {
-                this.movePet(e.clientX - this.state.dragOffsetX, e.clientY - this.state.dragOffsetY);
+                this.movePetTo(e.clientX - this.state.dragOffsetX, e.clientY - this.state.dragOffsetY);
             }
         });
 
         window.addEventListener('mouseup', () => {
             if(this.state.isDragging) {
                 this.state.isDragging = false;
-                this.elements.pet.style.transition = 'transform 0.1s linear';
-                this.elements.bubbleContainer.style.transition = 'top 0.1s linear, left 0.1s linear';
-                this.changeAction(this.state.isSleeping ? 'sleep' : 'idle');
+                if(!this.state.isSleeping) this.setAction('idle');
                 this.saveData();
             }
         });
@@ -404,93 +504,169 @@ const PetExtension = {
         // 右键菜单
         this.elements.pet.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            let x = e.clientX, y = e.clientY;
-            if(x + 150 > window.innerWidth) x -= 150;
-            if(y + 200 > window.innerHeight) y -= 200;
-            this.elements.menu.style.left = x + 'px';
-            this.elements.menu.style.top = y + 'px';
+            this.elements.menu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+            this.elements.menu.style.top = Math.min(e.clientY, window.innerHeight - 250) + 'px';
             this.elements.menu.classList.add('show');
             this.updateStatsUI();
         });
 
         window.addEventListener('click', (e) => {
-            if(!e.target.closest('.pet-context-menu') && e.target.id !== 'pet-entity') this.hideMenu();
+            if(!e.target.closest('.pet-context-menu')) this.hideMenu();
         });
 
-        // 按钮事件绑定
-        document.getElementById('act-feed').onclick = () => this.feed();
+        // 按钮绑定
+        document.getElementById('act-feed').onclick = () => this.spawnFood();
         document.getElementById('act-sleep').onclick = () => this.toggleSleep();
         document.getElementById('act-interact').onclick = () => this.interact();
-        document.getElementById('act-reset').onclick = () => this.resetPosition();
-        
-        // 设置面板相关
-        document.getElementById('act-settings').onclick = () => {
+        document.getElementById('act-reset').onclick = () => {
+            this.movePetTo(window.innerWidth/2, window.innerHeight/2);
             this.hideMenu();
-            document.getElementById('pet-set-name').value = this.store.petName;
-            document.getElementById('pet-set-size').value = this.store.size;
-            
-            // 刷新图片预览
-            const refreshPreview = (key, imgId, txtId) => {
-                const img = document.getElementById(imgId);
-                const txt = document.getElementById(txtId);
-                if (this.store.images[key] && this.store.images[key].length > 100) { 
-                    // 简单的判断，如果是base64或者长路径
-                    img.src = this.store.images[key];
-                    img.style.display = 'block';
-                    txt.style.display = 'none';
-                } else {
-                    img.style.display = 'none';
-                    txt.style.display = 'block';
-                }
-            };
-            refreshPreview('idle', 'prev-img-idle', 'prev-text-idle');
-            refreshPreview('walk', 'prev-img-walk', 'prev-text-walk');
-            refreshPreview('interact', 'prev-img-interact', 'prev-text-interact');
-            refreshPreview('drag', 'prev-img-drag', 'prev-text-drag');
-            refreshPreview('sleep', 'prev-img-sleep', 'prev-text-sleep');
-
-            this.elements.modal.classList.add('show');
         };
-
+        
+        // 设置面板逻辑
+        document.getElementById('act-settings').onclick = this.openSettings.bind(this);
         document.getElementById('btn-close-settings').onclick = () => this.elements.modal.classList.remove('show');
-        
-        document.getElementById('btn-save-settings').onclick = () => {
-            this.store.petName = document.getElementById('pet-set-name').value;
-            this.store.size = parseInt(document.getElementById('pet-set-size').value);
-            this.saveData();
-            this.updateAppearance();
-            this.elements.modal.classList.remove('show');
-            this.say("设置已保存");
-        };
-        
-        // 通用上传处理函数
-        const handleUpload = (key, inputId, divId, imgId) => {
-            const div = document.getElementById(divId);
-            const input = document.getElementById(inputId);
-            
-            div.onclick = () => input.click();
-            input.onchange = (e) => {
-                const file = e.target.files[0];
-                if(!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    this.store.images[key] = ev.target.result;
-                    document.getElementById(imgId).src = ev.target.result;
-                    document.getElementById(imgId).style.display = 'block';
-                    // 隐藏文字
-                    const span = div.querySelector('span');
-                    if(span) span.style.display = 'none';
-                };
-                reader.readAsDataURL(file);
-            };
+        document.getElementById('btn-save-settings').onclick = this.applySettings.bind(this);
+
+        document.getElementById('pet-set-size').addEventListener('input', (e) => {
+            document.getElementById('size-display').textContent = e.target.value + 'px';
+        });
+        document.getElementById('pet-set-fps').addEventListener('input', (e) => {
+            document.getElementById('fps-display').textContent = e.target.value + 'ms';
+        });
+
+        // 绑定多图上传
+        this.bindMultiUploader('idle', 'file-idle', 'uploader-idle', 'img-idle', 'txt-idle');
+        this.bindMultiUploader('walk', 'file-walk', 'uploader-walk', 'img-walk', 'txt-walk');
+        this.bindMultiUploader('interact', 'file-interact', 'uploader-interact', 'img-interact', 'txt-interact');
+        this.bindMultiUploader('sleep', 'file-sleep', 'uploader-sleep', 'img-sleep', 'txt-sleep');
+        // 单图上传
+        this.bindMultiUploader('food', 'file-food', 'uploader-food', 'img-food', 'txt-food', true);
+    },
+
+    openSettings() {
+        this.hideMenu();
+        document.getElementById('pet-set-name').value = this.store.petName;
+        document.getElementById('pet-set-size').value = this.store.size;
+        document.getElementById('size-display').textContent = this.store.size + 'px';
+        document.getElementById('pet-set-fps').value = this.store.frameSpeed;
+        document.getElementById('fps-display').textContent = this.store.frameSpeed + 'ms';
+
+        // 预览图逻辑：如果是数组，取第一张；如果是字符串，直接用
+        const refreshPreview = (key) => {
+            const data = this.store.images[key];
+            const img = document.getElementById('img-' + key);
+            const txt = document.getElementById('txt-' + key);
+            let src = null;
+
+            if (Array.isArray(data) && data.length > 0) src = data[0];
+            else if (typeof data === 'string') src = data;
+
+            if (src && src.length > 50) { // 简单校验
+                img.src = src;
+                img.style.display = 'block';
+                txt.style.display = 'none';
+            } else {
+                img.style.display = 'none';
+                txt.style.display = 'block';
+            }
         };
 
-        // 绑定所有上传按钮
-        handleUpload('idle', 'upload-idle', 'uploader-idle', 'prev-img-idle');
-        handleUpload('walk', 'upload-walk', 'uploader-walk', 'prev-img-walk');
-        handleUpload('interact', 'upload-interact', 'uploader-interact', 'prev-img-interact');
-        handleUpload('drag', 'upload-drag', 'uploader-drag', 'prev-img-drag');
-        handleUpload('sleep', 'upload-sleep', 'uploader-sleep', 'prev-img-sleep');
+        ['idle', 'walk', 'interact', 'sleep', 'food'].forEach(refreshPreview);
+        this.elements.modal.classList.add('show');
+    },
+
+    applySettings() {
+        this.store.petName = document.getElementById('pet-set-name').value;
+        this.store.size = parseInt(document.getElementById('pet-set-size').value);
+        this.store.frameSpeed = parseInt(document.getElementById('pet-set-fps').value);
+        this.saveData();
+        this.updateAppearance();
+        this.elements.modal.classList.remove('show');
+        this.say("设置已生效！");
+    },
+
+    bindMultiUploader(key, inputId, divId, imgId, txtId, isSingle = false) {
+        const div = document.getElementById(divId);
+        const input = document.getElementById(inputId);
+        const img = document.getElementById(imgId);
+        const txt = document.getElementById(txtId);
+
+        div.onclick = () => input.click();
+
+        input.onchange = async (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            // 按文件名排序，保证动画帧顺序 (walk_01.png, walk_02.png...)
+            files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+            const promises = files.map(file => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => resolve(ev.target.result);
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            try {
+                const results = await Promise.all(promises);
+                
+                if (isSingle) {
+                    this.store.images[key] = results[0]; // 单张 (食物)
+                    img.src = results[0];
+                } else {
+                    this.store.images[key] = results; // 数组 (动画)
+                    img.src = results[0]; // 预览显示第一帧
+                    
+                    // 提示用户上传了多少帧
+                    txt.textContent = `已选 ${results.length} 帧`;
+                }
+
+                img.style.display = 'block';
+                txt.style.display = isSingle ? 'none' : 'block'; 
+                
+            } catch (err) {
+                console.error("Image upload failed", err);
+                this.say("图片读取失败");
+            }
+        };
+    },
+
+    updateAppearance() {
+        this.elements.pet.style.width = this.store.size + 'px';
+        this.setAction(this.state.currentAction);
+    },
+
+    say(text) {
+        this.elements.bubble.textContent = text;
+        this.elements.bubble.classList.add('show');
+        if(this.state.timers.bubble) clearTimeout(this.state.timers.bubble);
+        this.state.timers.bubble = setTimeout(() => {
+            this.elements.bubble.classList.remove('show');
+        }, 3000);
+    },
+
+    hideMenu() { this.elements.menu.classList.remove('show'); },
+
+    startStatDecay() {
+        this.state.timers.stats = setInterval(() => {
+            if(!this.state.isSleeping) {
+                this.store.stats.hunger = Math.max(0, this.store.stats.hunger - 1);
+                this.store.stats.happiness = Math.max(0, this.store.stats.happiness - 1);
+            } else {
+                this.store.stats.energy = Math.min(100, this.store.stats.energy + 2);
+            }
+            this.updateStatsUI();
+        }, 10000);
+    },
+
+    updateStatsUI() {
+        if(!document.getElementById('val-hunger')) return;
+        document.getElementById('val-hunger').textContent = Math.floor(this.store.stats.hunger) + '%';
+        document.getElementById('bar-hunger').style.width = this.store.stats.hunger + '%';
+        document.getElementById('val-happiness').textContent = Math.floor(this.store.stats.happiness) + '%';
+        document.getElementById('bar-happiness').style.width = this.store.stats.happiness + '%';
     }
 };
 
