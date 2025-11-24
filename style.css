@@ -77,49 +77,6 @@
     color: black;
 }
 
-/* V3 新增样式：聊天框 */
-#pet-chat-box {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 300px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    display: none; /* 默认隐藏 */
-    gap: 8px;
-    z-index: 10001;
-    backdrop-filter: blur(5px);
-}
-
-#pet-chat-input {
-    flex: 1;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 8px;
-    outline: none;
-}
-
-#pet-chat-send {
-    background: #4facfe;
-    color: white;
-    border: none;
-    padding: 0 15px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-#pet-chat-close {
-    background: #ff6b6b;
-    color: white;
-    border: none;
-    width: 30px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
 /* 食物样式 */
 .pet-food-item {
     position: fixed;
