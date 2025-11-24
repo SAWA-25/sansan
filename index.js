@@ -1,6 +1,6 @@
 [file name]: index.js
 [file content begin]
-// index.js - Sansan Desktop Pet V2 (Frame-by-Frame & Custom Food) with Vision
+// index.js - Sansan Desktop Pet V2 (Frame-by-Frame & Custom Food) with Vision & Mobile Support
 import { extension_settings } from "../../../extensions.js";
 
 // ==========================================
@@ -18,6 +18,16 @@ const petHtmlTemplate = `
 
     <!-- 食物容器 (动态生成) -->
     <div id="pet-food-container"></div>
+
+    <!-- 移动端控制按钮 -->
+    <div id="pet-mobile-controls" class="pet-mobile-controls">
+        <button class="pet-mobile-btn" id="mobile-feed">🍖</button>
+        <button class="pet-mobile-btn" id="mobile-interact">💕</button>
+        <button class="pet-mobile-btn" id="mobile-sleep">💤</button>
+        <button class="pet-mobile-btn" id="mobile-chat">💬</button>
+        <button class="pet-mobile-btn" id="mobile-look">👀</button>
+        <button class="pet-mobile-btn" id="mobile-menu">⚙️</button>
+    </div>
 
     <!-- 右键菜单 -->
     <div class="pet-context-menu" id="pet-context-menu">
@@ -50,9 +60,11 @@ const petHtmlTemplate = `
             </div>
             <div class="pet-chat-input-area">
                 <textarea id="chat-input" placeholder="输入你想说的话..." rows="3"></textarea>
-                <button id="chat-send" class="pet-btn primary">发送</button>
-                <button id="chat-clear" class="pet-btn cancel">清空</button>
-                <button id="chat-close" class="pet-btn cancel">关闭</button>
+                <div class="pet-chat-buttons">
+                    <button id="chat-send" class="pet-btn primary">发送</button>
+                    <button id="chat-clear" class="pet-btn cancel">清空</button>
+                    <button id="chat-close" class="pet-btn cancel">关闭</button>
+                </div>
             </div>
         </div>
     </div>
@@ -121,6 +133,13 @@ const petHtmlTemplate = `
                     <label>动画速度 (毫秒/帧): <span id="fps-display">150ms</span></label>
                     <input type="range" id="pet-set-fps" min="50" max="500" value="150" step="10" style="width:100%">
                     <div style="font-size:12px;color:#999">数值越小动作越快</div>
+                </div>
+
+                <div class="pet-section-title">移动端设置</div>
+                <div class="pet-form-group">
+                    <label>移动端宠物大小</label>
+                    <input type="range" id="pet-set-mobile-size" min="30" max="200" value="80" style="width:100%">
+                    <div style="font-size:12px;color:#999" id="mobile-size-display">80px</div>
                 </div>
 
                 <div class="pet-section-title">资源自定义 (支持多图逐帧)</div>
@@ -212,6 +231,7 @@ const PetExtension = {
     store: {
         petName: '三三',
         size: 150,
+        mobileSize: 80, // 新增：移动端大小
         frameSpeed: 150, // 动画每帧间隔(ms)
         stats: { hunger: 80, happiness: 80, energy: 90 },
         // images 结构改变：现在除了 food 外，其他都是数组 []
@@ -232,6 +252,7 @@ const PetExtension = {
         isWalking: false,
         isEating: false, // 新增：正在吃东西状态
         isProcessingAI: false, // AI处理中
+        isMobile: false, // 新增：移动端检测
         
         currentAction: 'idle',
         
@@ -254,6 +275,9 @@ const PetExtension = {
     elements: {},
 
     init() {
+        // 检测移动端
+        this.state.isMobile = this.isMobileDevice();
+        
         if (!document.getElementById('pet-overlay-root')) {
             const div = document.createElement('div');
             div.innerHTML = petHtmlTemplate;
@@ -266,14 +290,15 @@ const PetExtension = {
             menu: document.getElementById('pet-context-menu'),
             modal: document.getElementById('pet-settings-modal'),
             chatModal: document.getElementById('pet-chat-modal'),
-            foodContainer: document.getElementById('pet-food-container')
+            foodContainer: document.getElementById('pet-food-container'),
+            mobileControls: document.getElementById('pet-mobile-controls')
         };
 
         this.loadData();
         
         if(!localStorage.getItem('st_desktop_pet_data_v2')) {
-            this.state.posX = window.innerWidth / 2 - 75;
-            this.state.posY = window.innerHeight / 2 - 75;
+            this.state.posX = window.innerWidth / 2 - (this.state.isMobile ? this.store.mobileSize/2 : 75);
+            this.state.posY = window.innerHeight / 2 - (this.state.isMobile ? this.store.mobileSize/2 : 75);
         }
 
         this.updateAppearance();
@@ -286,7 +311,13 @@ const PetExtension = {
         this.startStatDecay();
         this.updateStatsUI();
 
-        console.log(`[Sansan V2] Pet Initialized.`);
+        console.log(`[Sansan V2] Pet Initialized. Mobile: ${this.state.isMobile}`);
+    },
+
+    // 检测移动设备
+    isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+               window.innerWidth <= 768;
     },
 
     loadData() {
@@ -297,6 +328,7 @@ const PetExtension = {
                 const data = JSON.parse(saved);
                 this.store.petName = data.petName || '三三';
                 this.store.size = data.size || 150;
+                this.store.mobileSize = data.mobileSize || 80; // 移动端大小
                 this.store.frameSpeed = data.frameSpeed || 150;
                 this.store.stats = { ...this.store.stats, ...data.stats };
                 
@@ -361,7 +393,7 @@ const PetExtension = {
         // 只有在行走或去吃东西时才移动
         if (!this.state.isWalking && !this.state.isEating) return;
 
-        const speed = 2.5; // 移动速度
+        const speed = this.state.isMobile ? 1.5 : 2.5; // 移动端移动速度稍慢
         const dx = this.state.targetX - this.state.posX;
         const dy = this.state.targetY - this.state.posY;
         const dist = Math.sqrt(dx*dx + dy*dy);
@@ -411,9 +443,11 @@ const PetExtension = {
     },
 
     movePetTo(x, y) {
+        const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
+        
         // 边界限制
-        const maxX = window.innerWidth - this.store.size;
-        const maxY = window.innerHeight - this.store.size;
+        const maxX = window.innerWidth - currentSize;
+        const maxY = window.innerHeight - currentSize;
         x = Math.max(0, Math.min(x, maxX));
         y = Math.max(0, Math.min(y, maxY));
 
@@ -425,7 +459,7 @@ const PetExtension = {
         
         // 气泡跟随
         const bubble = document.getElementById('pet-bubble-container');
-        bubble.style.left = (x + this.store.size / 2) + 'px';
+        bubble.style.left = (x + currentSize / 2) + 'px';
         bubble.style.top = y + 'px';
     },
 
@@ -450,14 +484,16 @@ const PetExtension = {
         this.state.isWalking = true;
         this.setAction('walk');
 
+        const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
+        
         // 随机漫步范围
-        const range = 300;
+        const range = this.state.isMobile ? 150 : 300; // 移动端范围小一些
         let tx = this.state.posX + (Math.random() * range * 2 - range);
         let ty = this.state.posY + (Math.random() * range * 2 - range);
         
         // 修正目标点在屏幕内
-        const maxX = window.innerWidth - this.store.size;
-        const maxY = window.innerHeight - this.store.size;
+        const maxX = window.innerWidth - currentSize;
+        const maxY = window.innerHeight - currentSize;
         this.state.targetX = Math.max(0, Math.min(tx, maxX));
         this.state.targetY = Math.max(0, Math.min(ty, maxY));
     },
@@ -497,7 +533,7 @@ const PetExtension = {
             html2canvas(document.body, {
                 useCORS: true,
                 allowTaint: true,
-                scale: 0.5, // 降低分辨率以减少数据量
+                scale: this.state.isMobile ? 0.3 : 0.5, // 移动端分辨率更低
                 logging: false
             }).then(canvas => {
                 // 将 canvas 转换为 base64
@@ -702,7 +738,8 @@ const PetExtension = {
         const foodEl = document.createElement('img');
         foodEl.src = this.store.images.food || `${basePath}food.png`;
         foodEl.className = 'pet-food-item';
-        foodEl.style.width = (this.store.size / 3) + 'px';
+        const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
+        foodEl.style.width = (currentSize / 3) + 'px';
         
         // 2. 随机位置放置食物 (稍微远离宠物，让它走过去)
         const maxX = window.innerWidth - 100;
@@ -723,8 +760,8 @@ const PetExtension = {
         this.say("哇！好吃的！");
 
         // 4. 设定目标点为食物位置 (稍微修正重叠)
-        this.state.targetX = foodX - (this.store.size / 4);
-        this.state.targetY = foodY - (this.store.size / 4);
+        this.state.targetX = foodX - (currentSize / 4);
+        this.state.targetY = foodY - (currentSize / 4);
         
         this.hideMenu();
     },
@@ -779,46 +816,73 @@ const PetExtension = {
     // --- 设置面板与事件 ---
     
     bindEvents() {
-        // 拖拽逻辑
+        // 拖拽逻辑 - 桌面端
         this.elements.pet.addEventListener('mousedown', (e) => {
             if(e.button !== 0) return;
             e.preventDefault();
-            this.state.isDragging = true;
-            this.state.isWalking = false;
-            this.state.isEating = false;
-            this.setAction('walk'); // 被提起来通常用挣扎或walk图
-            
-            const rect = this.elements.pet.getBoundingClientRect();
-            this.state.dragOffsetX = e.clientX - rect.left;
-            this.state.dragOffsetY = e.clientY - rect.top;
+            this.startDragging(e.clientX, e.clientY);
+        });
+
+        // 触摸逻辑 - 移动端
+        this.elements.pet.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            this.startDragging(touch.clientX, touch.clientY);
         });
 
         window.addEventListener('mousemove', (e) => {
             if(this.state.isDragging) {
-                this.movePetTo(e.clientX - this.state.dragOffsetX, e.clientY - this.state.dragOffsetY);
+                this.handleDragging(e.clientX, e.clientY);
+            }
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if(this.state.isDragging) {
+                const touch = e.touches[0];
+                this.handleDragging(touch.clientX, touch.clientY);
             }
         });
 
         window.addEventListener('mouseup', () => {
-            if(this.state.isDragging) {
-                this.state.isDragging = false;
-                if(!this.state.isSleeping) this.setAction('idle');
-                this.saveData();
-            }
+            this.stopDragging();
         });
 
-        // 右键菜单
+        window.addEventListener('touchend', () => {
+            this.stopDragging();
+        });
+
+        // 右键菜单 - 桌面端
         this.elements.pet.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            this.elements.menu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
-            this.elements.menu.style.top = Math.min(e.clientY, window.innerHeight - 250) + 'px';
-            this.elements.menu.classList.add('show');
-            this.updateStatsUI();
+            this.showContextMenu(e.clientX, e.clientY);
+        });
+
+        // 长按菜单 - 移动端
+        let pressTimer;
+        this.elements.pet.addEventListener('touchstart', (e) => {
+            pressTimer = setTimeout(() => {
+                const touch = e.touches[0];
+                this.showContextMenu(touch.clientX, touch.clientY);
+            }, 500); // 长按500ms显示菜单
+        });
+
+        this.elements.pet.addEventListener('touchend', () => {
+            clearTimeout(pressTimer);
         });
 
         window.addEventListener('click', (e) => {
             if(!e.target.closest('.pet-context-menu')) this.hideMenu();
         });
+
+        // 移动端控制按钮
+        if (this.state.isMobile) {
+            document.getElementById('mobile-feed').onclick = () => this.spawnFood();
+            document.getElementById('mobile-interact').onclick = () => this.interact();
+            document.getElementById('mobile-sleep').onclick = () => this.toggleSleep();
+            document.getElementById('mobile-chat').onclick = () => this.openChat();
+            document.getElementById('mobile-look').onclick = () => this.lookAround();
+            document.getElementById('mobile-menu').onclick = () => this.openSettings();
+        }
 
         // 按钮绑定
         document.getElementById('act-feed').onclick = () => this.spawnFood();
@@ -827,7 +891,8 @@ const PetExtension = {
         document.getElementById('act-chat').onclick = () => this.openChat();
         document.getElementById('act-look').onclick = () => this.lookAround();
         document.getElementById('act-reset').onclick = () => {
-            this.movePetTo(window.innerWidth/2, window.innerHeight/2);
+            const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
+            this.movePetTo(window.innerWidth/2 - currentSize/2, window.innerHeight/2 - currentSize/2);
             this.hideMenu();
         };
         
@@ -868,8 +933,13 @@ const PetExtension = {
         document.getElementById('pet-set-size').addEventListener('input', (e) => {
             document.getElementById('size-display').textContent = e.target.value + 'px';
         });
+        
         document.getElementById('pet-set-fps').addEventListener('input', (e) => {
             document.getElementById('fps-display').textContent = e.target.value + 'ms';
+        });
+
+        document.getElementById('pet-set-mobile-size').addEventListener('input', (e) => {
+            document.getElementById('mobile-size-display').textContent = e.target.value + 'px';
         });
 
         // 绑定多图上传
@@ -879,6 +949,48 @@ const PetExtension = {
         this.bindMultiUploader('sleep', 'file-sleep', 'uploader-sleep', 'img-sleep', 'txt-sleep');
         // 单图上传
         this.bindMultiUploader('food', 'file-food', 'uploader-food', 'img-food', 'txt-food', true);
+
+        // 窗口大小变化时重新调整位置
+        window.addEventListener('resize', () => {
+            const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
+            const maxX = window.innerWidth - currentSize;
+            const maxY = window.innerHeight - currentSize;
+            
+            this.state.posX = Math.min(this.state.posX, maxX);
+            this.state.posY = Math.min(this.state.posY, maxY);
+            this.movePetTo(this.state.posX, this.state.posY);
+        });
+    },
+
+    // 拖拽相关方法
+    startDragging(clientX, clientY) {
+        this.state.isDragging = true;
+        this.state.isWalking = false;
+        this.state.isEating = false;
+        this.setAction('walk');
+        
+        const rect = this.elements.pet.getBoundingClientRect();
+        this.state.dragOffsetX = clientX - rect.left;
+        this.state.dragOffsetY = clientY - rect.top;
+    },
+
+    handleDragging(clientX, clientY) {
+        this.movePetTo(clientX - this.state.dragOffsetX, clientY - this.state.dragOffsetY);
+    },
+
+    stopDragging() {
+        if(this.state.isDragging) {
+            this.state.isDragging = false;
+            if(!this.state.isSleeping) this.setAction('idle');
+            this.saveData();
+        }
+    },
+
+    showContextMenu(clientX, clientY) {
+        this.elements.menu.style.left = Math.min(clientX, window.innerWidth - 160) + 'px';
+        this.elements.menu.style.top = Math.min(clientY, window.innerHeight - 250) + 'px';
+        this.elements.menu.classList.add('show');
+        this.updateStatsUI();
     },
 
     openSettings() {
@@ -888,6 +1000,8 @@ const PetExtension = {
         document.getElementById('size-display').textContent = this.store.size + 'px';
         document.getElementById('pet-set-fps').value = this.store.frameSpeed;
         document.getElementById('fps-display').textContent = this.store.frameSpeed + 'ms';
+        document.getElementById('pet-set-mobile-size').value = this.store.mobileSize;
+        document.getElementById('mobile-size-display').textContent = this.store.mobileSize + 'px';
 
         // AI 设置
         document.getElementById('pet-set-api-base').value = this.store.aiSettings.apiBase;
@@ -923,6 +1037,7 @@ const PetExtension = {
     applySettings() {
         this.store.petName = document.getElementById('pet-set-name').value;
         this.store.size = parseInt(document.getElementById('pet-set-size').value);
+        this.store.mobileSize = parseInt(document.getElementById('pet-set-mobile-size').value);
         this.store.frameSpeed = parseInt(document.getElementById('pet-set-fps').value);
         
         // 保存 AI 设置
@@ -986,7 +1101,14 @@ const PetExtension = {
     },
 
     updateAppearance() {
-        this.elements.pet.style.width = this.store.size + 'px';
+        const currentSize = this.state.isMobile ? this.store.mobileSize : this.store.size;
+        this.elements.pet.style.width = currentSize + 'px';
+        
+        // 显示/隐藏移动端控制按钮
+        if (this.elements.mobileControls) {
+            this.elements.mobileControls.style.display = this.state.isMobile ? 'flex' : 'none';
+        }
+        
         this.setAction(this.state.currentAction);
     },
 
