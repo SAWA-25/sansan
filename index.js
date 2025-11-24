@@ -127,7 +127,7 @@ const basePath = `scripts/extensions/${extensionName}/assets/`;
 
 const DefaultAssets = {
     // 待机状态：我暂时用 happy.gif，如果你有专门的站立图可以换
-    idle:     `${basePath}happy.gif`, 
+    idle:     `${basePath}idle.gif`, 
     
     // 行走状态：对应你文件夹里的 walk.gif
     walk:     `${basePath}walk.gif`,  
@@ -139,7 +139,7 @@ const DefaultAssets = {
     drag:     `${basePath}drag.gif`,  
     
     // 睡觉：你文件夹里暂时没有 sleep.gif，我先用 happy.gif 顶替，或者你可以上传一个 sleep.gif
-    sleep:    `${basePath}happy.gif`  
+    sleep:    `${basePath}sleep.gif`  
 };
 
 const PetExtension = {
